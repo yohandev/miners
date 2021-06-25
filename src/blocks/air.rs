@@ -1,16 +1,18 @@
 use crate::world::Block;
+use crate::util::Bits;
 
+#[derive(Debug, Default)]
 pub struct BlockAir;
 
 impl Block for BlockAir
 {
-    fn unpack(_: u8) -> Self where Self: Sized
+    fn unpack(_: Bits<6>) -> Self where Self: Sized
     {
         Self
     }
 
-    fn pack(&self) -> Option<u8>
+    fn pack(&self) -> Option<Bits<6>>
     {
-        Some(0)
+        Some(Default::default())
     }
 }

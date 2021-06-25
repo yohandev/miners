@@ -1,7 +1,9 @@
 use crate::world::Block;
+use crate::util::Bits;
 
 use super::props::Facing;
 
+#[derive(Debug)]
 pub struct BlockChest
 {
     // dummy
@@ -11,12 +13,12 @@ pub struct BlockChest
 
 impl Block for BlockChest
 {
-    fn unpack(_: u8) -> Self where Self: Sized
+    fn unpack(_: Bits<6>) -> Self where Self: Sized
     {
         unreachable!()
     }
 
-    fn pack(&self) -> Option<u8>
+    fn pack(&self) -> Option<Bits<6>>
     {
         None
     }

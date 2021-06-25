@@ -2,10 +2,12 @@ use std::ops::{ Deref, DerefMut };
 use std::collections::HashMap;
 use std::any::TypeId;
 
+use crate::util::Bits;
+
 pub trait Block: 'static
 {
-    fn unpack(data: u8) -> Self where Self: Sized;
-    fn pack(&self) -> Option<u8>;
+    fn unpack(data: Bits<6>) -> Self where Self: Sized;
+    fn pack(&self) -> Option<Bits<6>>;
 }
 
 /// Packed representation of a [Block]
@@ -46,12 +48,14 @@ pub struct BlockRegistry
     ty2id: HashMap<TypeId, BlockId>
 }
 
+#[derive(Debug)]
 pub enum Ref<'a, T: Block>
 {
     Data(T),
     Addr(&'a T),
 }
 
+#[derive(Debug)]
 pub enum RefMut<'a, T: Block>
 {
     Data(T, &'a mut RawBlock),
@@ -61,11 +65,9 @@ pub enum RefMut<'a, T: Block>
 impl RawBlock
 {
     #[inline]
-    pub fn from_data(id: BlockId, data: u8) -> Self
+    pub fn from_data(id: BlockId, data: Bits<6>) -> Self
     {
-        debug_assert_eq!(data & 0b1100_0000, 0);
-
-        Self((id.0 << 6) | data as u16)
+        Self((id.0 << 6) | data.inner() as u16)
     }
 
     #[inline]
@@ -82,7 +84,7 @@ impl RawBlock
     #[inline]
     pub unsafe fn id(self) -> BlockId { BlockId((self.0 & 0b0111_1111_1100_0000) >> 6) }
     #[inline]
-    pub unsafe fn data(self) -> u8 { (self.0 & 0b0000_0000_0011_1111) as u8 }
+    pub unsafe fn data(self) -> Bits<6> { Bits::new(self.0 as u8) }
 
     #[inline]
     pub unsafe fn addr(self) -> u16 { self.0 & 0b0111_1111_1111_1111 }
@@ -103,11 +105,28 @@ impl BlockRegistry
 
     pub fn insert<T: Block>(&mut self)
     {
-        let id = BlockId(self.id2ty.len() as u16);
         let ty = TypeId::of::<T>();
+        let id = BlockId(self.id2ty.len() as u16);
 
-        self.id2ty.push(ty);
-        self.ty2id.insert(ty, id);
+        if !self.ty2id.contains_key(&ty)
+        {
+            self.id2ty.push(ty);
+            self.ty2id.insert(ty, id);
+        }
+    }
+}
+
+impl Default for BlockRegistry
+{
+    fn default() -> Self
+    {
+        let mut registry = Self
+        {
+            id2ty: Default::default(),
+            ty2id: Default::default(),
+        };
+        registry.insert::<crate::blocks::BlockAir>();
+        registry
     }
 }
 
@@ -159,9 +178,8 @@ impl<'a, T: Block> Drop for RefMut<'a, T>
         {
             let pack = block.pack().unwrap();
 
-            debug_assert_eq!(pack & 0b1100_0000, 0);
-
-            raw.0 |= pack as u16;
+            raw.0 &= 0b1111_1111_1100_0000;
+            raw.0 |= pack.inner() as u16;
         }
     }
 }

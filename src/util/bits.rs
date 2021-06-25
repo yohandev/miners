@@ -11,7 +11,7 @@
 /// bits.get::<4, 1>(); // error! won't compile
 /// bits.get::<4, 7>(); // error! won't compile
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Bits<const N: usize>(u8);
 
 impl<const N: usize> Bits<N> where Self: Valid
