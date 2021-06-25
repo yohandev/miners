@@ -6,7 +6,7 @@ use crate::util::Bits;
 
 pub trait Block: 'static
 {
-    fn unpack(data: Bits<6>) -> Self where Self: Sized;
+    fn unpack(data: Bits<6>) -> Self;
     fn pack(&self) -> Option<Bits<6>>;
 }
 
