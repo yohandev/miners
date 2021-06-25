@@ -27,7 +27,7 @@ impl<const N: usize> Bits<N> where Self: Valid
     /// Returns a range of the inner byte. Fails to compile if
     /// `START` >= `END`, or if `END` > `N`(length, in bits, of
     /// this bit array).
-    pub fn get<const START: usize, const END: usize>(self) -> u8
+    pub fn get<const START: usize, const END: usize>(&self) -> u8
     where
         Literal<START>: LessThan<Literal<END>>,
         Literal<START>: LessThan<Literal<N>>,
@@ -48,6 +48,40 @@ impl<const N: usize> Bits<N> where Self: Valid
         // - Shift Right(N - END)
         // - Bitwise AND(MaskOf1s(END - START))
         (self.0 >> (N - END)) & (0xff >> (8 - (END - START)))
+    }
+
+    /// Set the range in the inner byte to the given value. The upper bits of
+    /// the given value are clipped(set to 0) to `END` - `START`. Fails to compile
+    /// if `START` >= `END`, or if `END` > `N`(length, in bits, of this bit array).
+    pub fn set<const START: usize, const END: usize>(&mut self, val: u8)
+    where
+        Literal<START>: LessThan<Literal<END>>,
+        Literal<START>: LessThan<Literal<N>>,
+        Literal<END>: LessThanOrEqual<Literal<N>>,
+    {
+        // Let's look at a `Bits<6>` example, storing all set bits:
+        // Bits<6>(0b0011_1111)
+        //
+        // Putting `0b0000_0010` in 0..2 would look like this:
+        // 0011_1111
+        //   L⅃ <- put 10
+        // 0010_1111
+        //
+        // Putting `0b1111_1010` in 2..6 would look like this:
+        // 0011_1111
+        //      |__| <- put 1010
+        // 0011_1010
+        //
+        // So, effectively, settings a range looks like this:
+        // - Bitwise AND(MaskOf0s(Desired Range))
+        // - On `val`, Bitwise AND(MaskOf1s(END - START))
+        // - On `val` Shift Left(N - END)
+        // - Bitwise OR(`val`)
+        let mask = 0xff >> (8 - (END - START));
+        let shift = N - END;
+
+        self.0 &= !(mask << shift);
+        self.0 |= (val & mask) << shift;
     }
 
     /// Get the byte this bit array wraps over
@@ -158,5 +192,22 @@ mod test
         let bits = Bits::<6>::new(0b1100_1100);
 
         assert_eq!(bits.inner(), 0b0000_1100);
+    }
+
+    #[test]
+    fn set_range()
+    {
+        let mut bits = Bits::<6>::new(0b0011_1111);
+
+        bits.set::<0, 2>(0b0000_0010);
+        assert_eq!(bits.inner(), 0b0010_1111);
+
+        bits.set::<2, 6>(0b0010_1010);
+        assert_eq!(bits.inner(), 0b0010_1010);
+
+        let mut bits = Bits::<6>::new(0);
+
+        bits.set::<0, 6>(0xff);
+        assert_eq!(bits.inner(), 0b0011_1111);
     }
 }
