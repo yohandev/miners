@@ -1,0 +1,9 @@
+[package]
+name = "miners-common"
+version = "0.1.0"
+authors = ["yohandev"]
+edition = "2018"
+
+[dependencies]
+slab = "0.4.3"
+vek = "0.15.1"
