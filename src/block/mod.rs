@@ -22,7 +22,10 @@ pub trait BlockState
     fn serialize(&self) -> Bits<6>;
 }
 
-#[derive(BlockState, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(BlockState, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BlockAir;
+
+#[derive(BlockState, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BlockWoodenSlab
 {
     /// Direction the slab is oriented, where down means a lower,
