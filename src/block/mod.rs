@@ -20,6 +20,7 @@ pub trait Block: BlockState + 'static
 pub trait BlockState
 {
     fn serialize(&self) -> Bits<6>;
+    fn deserialize(state: Bits<6>) -> Self;
 }
 
 #[derive(BlockState, Debug, Clone, Copy, PartialEq, Eq)]
