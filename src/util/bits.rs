@@ -19,6 +19,7 @@ impl<const N: usize> Bits<N> where Self: Valid
     /// Create a new bit array of length `N` wrapping over the given value.
     /// 
     /// Bits "out of bound" are clipped and set to 0
+    #[inline]
     pub fn new(val: u8) -> Self
     {
         Self(val & (0xff >> (8 - N)))
@@ -27,6 +28,7 @@ impl<const N: usize> Bits<N> where Self: Valid
     /// Returns a range of the inner byte. Fails to compile if
     /// `START` >= `END`, or if `END` > `N`(length, in bits, of
     /// this bit array).
+    #[inline]
     pub fn get<const START: usize, const END: usize>(&self) -> u8
     where
         Literal<START>: LessThan<Literal<END>>,
@@ -85,6 +87,7 @@ impl<const N: usize> Bits<N> where Self: Valid
     }
 
     /// Get the byte this bit array wraps over
+    #[inline]
     pub fn inner(self) -> u8
     {
         self.0

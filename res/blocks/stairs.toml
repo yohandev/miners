@@ -8,3 +8,6 @@ variant = ["oak", "spruce", "birch", "jungle", "acacia", "dark_oak"] # 3 bits
 
 [looks]
 geometry = "stairs"
+texture = """
+    
+"""

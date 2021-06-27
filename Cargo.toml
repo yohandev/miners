@@ -1,5 +1,5 @@
 [package]
-name = "miners-common"
+name = "miners_common"
 version = "0.1.0"
 authors = ["yohandev"]
 edition = "2018"
