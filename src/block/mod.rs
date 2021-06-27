@@ -39,6 +39,24 @@ pub struct BlockWoodenSlab
     variant: WoodVariant,
 }
 
+#[derive(BlockState, Debug, Clone, PartialEq, Eq)]
+pub struct BlockChest
+{
+    #[prop(North | South | East | West)]
+    facing: Direction,
+    #[prop(!)]
+    contents: Vec<String>,
+}
+
+#[derive(BlockState, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BlockRedstoneDust
+{
+    #[prop(North | South | East | West)]
+    pub facing: Direction,
+    #[prop(0..16)]
+    pub power: u8,
+}
+
 impl Block for BlockWoodenSlab
 {
     fn id() -> &'static str
