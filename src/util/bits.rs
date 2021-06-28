@@ -20,7 +20,7 @@ impl<const N: usize> Bits<N> where Self: Valid
     /// 
     /// Bits "out of bound" are clipped and set to 0
     #[inline]
-    pub fn new(val: u8) -> Self
+    pub const fn new(val: u8) -> Self
     {
         Self(val & (0xff >> (8 - N)))
     }
@@ -88,7 +88,7 @@ impl<const N: usize> Bits<N> where Self: Valid
 
     /// Get the byte this bit array wraps over
     #[inline]
-    pub fn inner(self) -> u8
+    pub const fn inner(self) -> u8
     {
         self.0
     }

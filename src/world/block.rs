@@ -1,44 +1,193 @@
-use std::ops::{ Deref, DerefMut };
+pub use miners_macros::BlockState;
+
 use std::collections::HashMap;
 use std::any::TypeId;
 
 use crate::util::Bits;
 
-pub trait Block: 'static
-{
-    fn unpack(data: Bits<6>) -> Self;
-    fn pack(&self) -> Option<Bits<6>>;
-}
-
-/// Packed representation of a [Block]
-/// ```rust
-/// // either 15 bits of arbitrarily encoded state
-/// // data(inline-data block) or 15 bits = 32^3 ID
-/// // to a wider block(entity-address block)
-/// #[repr(u16)]
-/// struct Block
+/// Trait for all block types.
+///
+/// Implementors should first derive [BlockState], then implement
+/// this(`Block`) manually:
+/// ```
+/// #[derive(BlockState, Debug, Clone, Copy, PartialEq, Eq)]
+/// pub struct BlockWoodenSlab
 /// {
-///     discriminant: 1 bit,
-///     magic: union _
-///     {
-///         // inline-data block(discriminant = 0)
-///         data: struct _
-///         {
-///             id: 9 bits,
-///             state: 6 bits,
-///         },
-///         // entity-address block(discriminant = 1)
-///         addr: 15 bits,
-///     }
-/// } // 16-bits
+///     #[prop(North | South | East | West | Up | Down)]
+///     facing: Direction,
+///     #[prop(Oak | Spruce | Birch | Jungle | Acacia | DarkOak)]
+///     variant: WoodVariant,
+/// }
+/// 
+/// impl Block for BlockWoodenSlab
+/// {
+///     fn id() -> &'static str { "wooden_slab" }
+///     fn name() -> StaticString { format!("{} Slab", self.variant).into() }
+/// 
+///     // ...
+/// }
 /// ```
 ///
-/// [Block]: crate::world::Block
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct RawBlock(u16);
+/// [BlockState]: crate::world::BlockState
+pub trait Block: BlockState + 'static
+{
+    /// Unique string identifier for this type of block.
+    /// (Should never change)
+    fn id() -> &'static str;
 
+    /// Display name for this instance of a block
+    fn name(&self) -> std::borrow::Cow<'static, str>;
+}
+
+/// Trait to be implemented by all `Block` types, regardless of
+/// wether they can actually be packed into 6 bits or not. This
+/// is used to memory-efficiently store blocks in `Chunk`s, serialize
+/// them to world saves and send them over the network.
+///
+/// This should generally just be derived like so:
+/// ```
+/// #[derive(BlockState, Debug, Clone, Copy)]
+/// pub struct BlockWoodenPlanks
+/// {
+///     // For each field, you need to enumerate the possible values
+///     // of that type...
+///     #[prop(Oak | Spruce | Birch | Jungle | Acacia | DarkOak)]
+///     variant: WoodenVariant,
+/// }
+/// 
+/// #[derive(BlockState, Debug, Clone)]
+/// pub struct BlockSign
+/// {
+///     // ... Or use the never(`!`) syntax if not possible.
+///     #[prop(!)]
+///     content: String
+/// }
+/// 
+/// // The derive macro will determine if this block can be packed into
+/// // 6 bits or not:
+/// #[derive(BlockState, Debug, Clone, Copy)]
+/// pub struct BlockSpecialWoodenSlab
+/// {
+///     #[prop(Oak | Spruce | Birch | Jungle | Acacia | DarkOak)]
+///     variant: WoodenVariant, // 3 bits
+///     #[prop(North | South | East | West | Up | Down)]
+///     facing: Direction,      // 3 bits
+///     #[prop(0..16)]
+///     special: u8             // 4 bits
+/// ```
+pub trait BlockState
+{
+    /// Whether instances of this type of `Block` can (de)serialize
+    /// their state in 6 bits.
+    ///
+    /// `BlockState::serialize` and `BlockState::deserialized` can be
+    /// left unimplemented if and only if `BlockState::REPR == BlockRepr::Addr`,
+    /// though the derive macro takes care of that automatically.
+    const REPR: BlockRepr;
+
+    /// Serialize this instance of a `Block`'s state in 6 bits,
+    /// or leave `unimplemented!()` if that's not possible.
+    fn serialize(&self) -> Bits<6>;
+    /// Deserialize an instance of a `Block` from 6 bits of state
+    /// data, or leave `unimplemented!()` if that's not possible.
+    fn deserialize(state: Bits<6>) -> Self;
+}
+
+/// Unique identifier for a type of `Block`, assigned at runtime by
+/// the game's block `Registry`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BlockId(u16);
+
+/// Represents the two ways `Block`'s state can be packed. This must
+/// be known statically, but deriving the `BlockState` trait takes
+/// care of that.
+pub enum BlockRepr
+{
+    /// The `Block`'s state can be entirely packed into 6 bits. The
+    /// packed state's bits look like this:
+    /// #[repr(u16)]
+    /// struct Block
+    /// {
+    ///     // Set to 0 for `BlockRepr::Data`
+    ///     discriminant: 1 bit,
+    /// 
+    ///     // Depends on the `Block` instance
+    ///     id: 9 bits,
+    ///     state: 6 bits,
+    ///
+    /// } // 16-bits
+    Data,
+    /// The `Block`'s state can*not* be entirely packed into 6 bits. The
+    /// packed state's bits look like this:
+    /// #[repr(u16)]
+    /// struct Block
+    /// {
+    ///     // Set to 1 for `BlockRepr::Addr`
+    ///     discriminant: 1 bit,
+    /// 
+    ///     // Depends on the `Block` instance
+    ///     addr: 15 bits,
+    ///
+    /// } // 16-bits
+    Addr,
+}
+
+/// A macro for conveniently defining `Block` types. It covers everything
+/// needed, and fails to compile outright if fields are missing.
+/// 
+/// Usage:
+/// ```
+/// blockdef!
+/// {
+///     id: "foo_bar",
+///     name: |self| format!("Foo Bar {}", self.num),
+///     
+///     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///     pub struct BlockFooBar
+///     {
+///         #[prop(0..64)]
+///         num: u8,
+///     },
+/// }
+/// ```
+#[macro_export]
+macro_rules! blockdef
+{
+    {
+        id: $id:literal,
+        name: |$sel:ident| $get_name:expr,
+
+        $(#[$outer:meta])*
+        $vis:vis struct $struct_name:ident
+        {
+            $(
+                $(#[$inner:ident $($args:tt)*])*
+                $vis2:ident: $ty:ty
+            ),* $(,)?
+        } $(,)?
+    } =>
+    {
+        $(#[$outer])*
+        #[derive(crate::world::BlockState)]
+        $vis struct $struct_name
+        {
+            $(
+                $(#[$inner $($args)*])*
+                $vis2: $ty
+            ),*
+        }
+
+        impl crate::world::Block for $struct_name
+        {
+            fn id() -> &'static str { $id }
+
+            fn name(&$sel) -> std::borrow::Cow<'static, str>
+            {
+                $get_name.into()
+            }
+        }
+    };
+}
 
 pub struct BlockRegistry
 {
@@ -46,48 +195,6 @@ pub struct BlockRegistry
     id2ty: Vec<TypeId>,
     /// maps `TypeId` to `BlockId`
     ty2id: HashMap<TypeId, BlockId>
-}
-
-#[derive(Debug)]
-pub enum Ref<'a, T: Block>
-{
-    Data(T),
-    Addr(&'a T),
-}
-
-#[derive(Debug)]
-pub enum RefMut<'a, T: Block>
-{
-    Data(T, &'a mut RawBlock),
-    Addr(&'a mut T)
-}
-
-impl RawBlock
-{
-    #[inline]
-    pub fn from_data(id: BlockId, data: Bits<6>) -> Self
-    {
-        Self((id.0 << 6) | data.inner() as u16)
-    }
-
-    #[inline]
-    pub fn from_addr(addr: u16) -> Self
-    {
-        Self((1 << 15) | addr)
-    }
-
-    #[inline]
-    pub fn is_data(self) -> bool { self.0 >> 15 == 0 }
-    #[inline]
-    pub fn is_addr(self) -> bool { !self.is_data() }
-
-    #[inline]
-    pub unsafe fn id(self) -> BlockId { BlockId((self.0 & 0b0111_1111_1100_0000) >> 6) }
-    #[inline]
-    pub unsafe fn data(self) -> Bits<6> { Bits::new(self.0 as u8) }
-
-    #[inline]
-    pub unsafe fn addr(self) -> u16 { self.0 & 0b0111_1111_1111_1111 }
 }
 
 impl BlockRegistry
@@ -125,61 +232,24 @@ impl Default for BlockRegistry
             id2ty: Default::default(),
             ty2id: Default::default(),
         };
-        registry.insert::<crate::blocks::BlockAir>();
+        registry.insert::<crate::vanilla::blocks::BlockAir>();
         registry
     }
 }
 
-impl<'a, T: Block> Deref for Ref<'a, T>
+impl BlockId
 {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target
+    /// Create a new `BlockId` from the inner ID
+    #[inline]
+    pub(super) const fn new(id: u16) -> Self
     {
-        match self
-        {
-            Ref::Data(block) => block,
-            Ref::Addr(block) => block,
-        }
+        Self(id)
     }
-}
 
-impl<'a, T: Block> Deref for RefMut<'a, T>
-{
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target
+    /// Get the inner ID from this `BlockId` wrapper
+    #[inline]
+    pub(super) const fn inner(self) -> u16
     {
-        match self
-        {
-            RefMut::Data(block, _) => block,
-            RefMut::Addr(block) => block,
-        }
-    }
-}
-
-impl<'a, T: Block> DerefMut for RefMut<'a, T>
-{
-    fn deref_mut(&mut self) -> &mut Self::Target
-    {
-        match self
-        {
-            RefMut::Data(block, _) => block,
-            RefMut::Addr(block) => block,
-        }
-    }
-}
-
-impl<'a, T: Block> Drop for RefMut<'a, T>
-{
-    fn drop(&mut self)
-    {
-        if let RefMut::Data(block, raw) = self
-        {
-            let pack = block.pack().unwrap();
-
-            raw.0 &= 0b1111_1111_1100_0000;
-            raw.0 |= pack.inner() as u16;
-        }
+        self.0
     }
 }
