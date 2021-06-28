@@ -1,7 +1,7 @@
 use crate::world::blockdef;
 use crate::math::Direction;
 
-use super::wooden_planks::WoodVariant;
+use super::WoodVariant;
 
 blockdef!
 {

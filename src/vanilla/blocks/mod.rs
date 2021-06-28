@@ -1,7 +1,5 @@
 mod air;
-mod wooden_planks;
-mod wooden_slab;
+mod wood;
 
 pub use air::*;
-pub use wooden_planks::*;
-pub use wooden_slab::*;
+pub use wood::*;

@@ -1,18 +1,8 @@
-use crate::world::blockdef;
+mod planks;
+mod slabs;
 
-blockdef!
-{
-    id: "wooden_planks",
-    name: |self| { format!("{} Planks", self.variant) },
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct BlockWoodenPlanks
-    {
-        /// The type wooden planks
-        #[prop(Oak | Spruce | Birch | Jungle | Acacia | DarkOak )]
-        variant: WoodVariant,
-    }
-}
+pub use planks::*;
+pub use slabs::*;
 
 /// The variants of wood in the game
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
