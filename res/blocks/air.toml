@@ -1,8 +1,0 @@
-[block]
-name = "Air"
-id = "air"
-
-[props]
-
-[looks]
-geometry = "void"
