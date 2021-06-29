@@ -1,9 +1,6 @@
 pub use miners_macros::BlockState;
 
-use std::collections::HashMap;
-use std::any::TypeId;
-
-use crate::util::Bits;
+use crate::util::{ Bits, Registry };
 
 /// Trait for all block types.
 ///
@@ -93,6 +90,12 @@ pub trait BlockState
     fn deserialize(state: Bits<6>) -> Self;
 }
 
+pub trait BlockLooks
+{
+    /// All the possible textures this block might use
+    fn texture_set() -> Vec<&'static str>;
+}
+
 /// Unique identifier for a type of `Block`, assigned at runtime by
 /// the game's block `Registry`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -131,6 +134,19 @@ pub enum BlockRepr
     /// } // 16-bits
     Addr,
 }
+
+/// A registry containing all the usable `Block` types in the game, along with
+/// meta data about said `Block`s. Used to assign and store `BlockId`s at runtime.
+/// 
+/// Most containers within the game, including [`Chunk`](crate::world::Chunk)s
+/// and [`World`](crate::world::World)s will have an `Arc` reference to the
+/// main instance of a `BlockRegistry`, and after game startup it will remain
+/// immutable.
+pub struct BlockRegistry(Registry<BlockMeta>);
+
+/// Meta-data about a concrete type implementing the `Block` trait. This mainly
+/// stores the static, non-object-able methods in `Block` and its super traits.
+pub struct BlockMeta;
 
 /// A macro for conveniently defining `Block` types. It covers everything
 /// needed, and fails to compile outright if fields are missing.
@@ -189,50 +205,42 @@ macro_rules! blockdef
     };
 }
 
-pub struct BlockRegistry
-{
-    /// maps `BlockId`(index) to rust `TypeId`
-    id2ty: Vec<TypeId>,
-    /// maps `TypeId` to `BlockId`
-    ty2id: HashMap<TypeId, BlockId>
-}
-
 impl BlockRegistry
 {
-    /// is a concrete rust type represented by this block ID?
-    pub fn is<T: Block>(&self, id: BlockId) -> bool
+    /// Adds a `Block` to this registry, if not already present.
+    pub fn register<T: Block>(&mut self)
     {
-        self.id2ty[id.0 as usize] == TypeId::of::<T>()
+        self.0.register::<T>(BlockMeta);
     }
 
-    pub fn id<T: Block>(&self) -> BlockId
+    /// Get the `BlockId` of a concrete `Block` type, if present
+    /// in the registry.
+    pub fn id<T: Block>(&self) -> Option<BlockId>
     {
-        self.ty2id[&TypeId::of::<T>()]
+        self.0
+            .id::<T>()
+            .map(|id| BlockId(id as _))
     }
 
-    pub fn insert<T: Block>(&mut self)
+    /// Does the generic parameter `T` match the `BlockId` provided?
+    pub fn matches<T: Block>(&self, id: BlockId) -> bool
     {
-        let ty = TypeId::of::<T>();
-        let id = BlockId(self.id2ty.len() as u16);
-
-        if !self.ty2id.contains_key(&ty)
+        match self.0.get(id.0 as _)
         {
-            self.id2ty.push(ty);
-            self.ty2id.insert(ty, id);
+            Some((ty, _)) => *ty == std::any::TypeId::of::<T>(),
+            None => false,
         }
     }
 }
 
 impl Default for BlockRegistry
 {
+    /// Creates a new registry with just `vanilla:air` registered.
     fn default() -> Self
     {
-        let mut registry = Self
-        {
-            id2ty: Default::default(),
-            ty2id: Default::default(),
-        };
-        registry.insert::<crate::vanilla::blocks::BlockAir>();
+        let mut registry = Self(Registry::default());
+
+        registry.register::<crate::vanilla::blocks::BlockAir>();
         registry
     }
 }
@@ -241,14 +249,14 @@ impl BlockId
 {
     /// Create a new `BlockId` from the inner ID
     #[inline]
-    pub(super) const fn new(id: u16) -> Self
+    pub const fn new(id: u16) -> Self
     {
         Self(id)
     }
 
     /// Get the inner ID from this `BlockId` wrapper
     #[inline]
-    pub(super) const fn inner(self) -> u16
+    pub const fn inner(self) -> u16
     {
         self.0
     }

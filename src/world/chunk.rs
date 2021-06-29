@@ -116,7 +116,7 @@ impl Chunk
 
                 self.registry
                     // Block type check
-                    .is::<T>(id)
+                    .matches::<T>(id)
                     // Owned ref
                     .then(|| Ref::Data(T::deserialize(data)))
             },
@@ -153,7 +153,7 @@ impl Chunk
 
                 self.registry
                     // Block type check
-                    .is::<T>(id)
+                    .matches::<T>(id)
                     // Owned ref
                     .then(move || RefMut::Data(T::deserialize(data), state))
             },
@@ -174,6 +174,8 @@ impl Chunk
     /// Set the block at the given position, in chunk-space, without doing bounds
     /// check. The block previously there is discarded, and replaced with that
     /// provided.
+    ///
+    /// Does nothing if the `Block` type `T` isn't registered.
     pub unsafe fn set_unchecked<T: Block>(&mut self, pos: Vec3<usize>, block: T)
     {
         // Get existing packed state
@@ -185,14 +187,21 @@ impl Chunk
             self.block_entities.remove(old.as_addr());
         }
 
+        // Get new block's ID from registry
+        let id = match self.registry.id::<T>()
+        {
+            // Found in registry
+            Some(id) => id,
+            // Not registered, early return
+            None => return
+        };
+
         // Determine how to pack state 
         match T::REPR
         {
             // Serialize
             BlockRepr::Data =>
             {
-                // Get new block's ID from registry
-                let id = self.registry.id::<T>();
                 // Serialize new block's state
                 let data = block.serialize();
 
@@ -214,15 +223,13 @@ impl Chunk
     /// exceed chunks' bounds.
     pub fn get<T: Block>(&self, pos: Vec3<usize>) -> Option<impl Deref<Target = T> + '_>
     {
-        if Chunk::in_bounds(pos)
+        match Chunk::in_bounds(pos)
         {
             // SAFETY:
             // Bounds just checked above.
-            unsafe { self.get_unchecked(pos) }
-        }
-        else
-        {
-            None
+            true => unsafe { self.get_unchecked(pos) },
+            // Out of bounds
+            false => None
         }
     }
 
@@ -231,15 +238,13 @@ impl Chunk
     /// exceed chunks' bounds.
     pub fn get_mut<T: Block>(&mut self, pos: Vec3<usize>)-> Option<impl DerefMut<Target = T> + '_>
     {
-        if Chunk::in_bounds(pos)
+        match Chunk::in_bounds(pos)
         {
             // SAFETY:
             // Bounds just checked above.
-            unsafe { self.get_unchecked_mut(pos) }
-        }
-        else
-        {
-            None
+            true => unsafe { self.get_unchecked_mut(pos) },
+            // Out of bounds
+            false => None
         }
     }
 
