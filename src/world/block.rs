@@ -26,11 +26,11 @@ use crate::util::{ Bits, Registry };
 /// ```
 ///
 /// [BlockState]: crate::world::BlockState
-pub trait Block: BlockState + 'static
+pub trait Block: BlockState + std::any::Any
 {
     /// Unique string identifier for this type of block.
     /// (Should never change)
-    fn id() -> &'static str;
+    fn id() -> &'static str where Self: Sized;
 
     /// Display name for this instance of a block
     fn name(&self) -> std::borrow::Cow<'static, str>;
@@ -80,14 +80,14 @@ pub trait BlockState
     /// `BlockState::serialize` and `BlockState::deserialized` can be
     /// left unimplemented if and only if `BlockState::REPR == BlockRepr::Addr`,
     /// though the derive macro takes care of that automatically.
-    const REPR: BlockRepr;
+    fn repr() -> BlockRepr where Self: Sized;
 
     /// Serialize this instance of a `Block`'s state in 6 bits,
     /// or leave `unimplemented!()` if that's not possible.
-    fn serialize(&self) -> Bits<6>;
+    fn serialize(&self) -> Bits<6> where Self: Sized;
     /// Deserialize an instance of a `Block` from 6 bits of state
     /// data, or leave `unimplemented!()` if that's not possible.
-    fn deserialize(state: Bits<6>) -> Self;
+    fn deserialize(state: Bits<6>) -> Self where Self: Sized;
 }
 
 pub trait BlockLooks
@@ -146,7 +146,14 @@ pub struct BlockRegistry(Registry<BlockMeta>);
 
 /// Meta-data about a concrete type implementing the `Block` trait. This mainly
 /// stores the static, non-object-able methods in `Block` and its super traits.
-pub struct BlockMeta;
+pub struct BlockMeta
+{
+    /// See [`Block::id`](Block::id).
+    pub id: &'static str,
+
+    /// See [`Block::name`](Block::name).
+    pub name: fn(Bits<6>) -> std::borrow::Cow<'static, str>,
+}
 
 /// A macro for conveniently defining `Block` types. It covers everything
 /// needed, and fails to compile outright if fields are missing.
@@ -210,7 +217,7 @@ impl BlockRegistry
     /// Adds a `Block` to this registry, if not already present.
     pub fn register<T: Block>(&mut self)
     {
-        self.0.register::<T>(BlockMeta);
+        self.0.register::<T>(BlockMeta::of::<T>());
     }
 
     /// Get the `BlockId` of a concrete `Block` type, if present
@@ -230,6 +237,14 @@ impl BlockRegistry
             Some((ty, _)) => *ty == std::any::TypeId::of::<T>(),
             None => false,
         }
+    }
+
+    /// Get the `BlockMeta` for the `Block` in this registry, if present.
+    pub fn meta(&self, id: BlockId) -> Option<&BlockMeta>
+    {
+        self.0
+            .get(id.0 as _)
+            .map(|(_, meta)| meta)
     }
 }
 
@@ -259,5 +274,31 @@ impl BlockId
     pub const fn inner(self) -> u16
     {
         self.0
+    }
+}
+
+impl BlockMeta
+{
+    /// Get the `BlockMeta` for the `Block` type `T`, whether its registered
+    /// in a `BlockRegistry` or not.
+    pub fn of<T: Block>() -> Self
+    {
+        match T::repr()
+        {
+            BlockRepr::Data => Self
+            {
+                id: T::id(),
+
+                name: |state| T::deserialize(state).name(),
+            },
+            // All `Block`s with `BlockRepr::Addr` have an `unimplemented!()` body
+            // for their `BlockState::deserialize`, so monomorphisation can be avoided.
+            BlockRepr::Addr => Self
+            {
+                id: T::id(),
+
+                name: |_| unimplemented!(),
+            },
+        }
     }
 }

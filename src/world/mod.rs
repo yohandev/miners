@@ -1,8 +1,10 @@
 mod block;
 mod chunk;
+mod world;
 
-pub use block::{ Block, BlockId, BlockState, BlockRepr, BlockRegistry };
+pub use block::{ Block, BlockId, BlockState, BlockRepr, BlockRegistry, BlockMeta };
 pub use chunk::Chunk;
+pub use world::World;
 
 pub use crate::blockdef;
 

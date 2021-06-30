@@ -4,7 +4,7 @@ use std::any::Any;
 
 use slab::Slab;
 
-use crate::world::{ Block, BlockId, BlockRegistry, BlockRepr };
+use crate::world::{ Block, BlockId, BlockRegistry, BlockRepr, BlockMeta };
 use crate::util::Bits;
 use crate::math::Vec3;
 
@@ -25,7 +25,7 @@ pub struct Chunk
     /// are interpreted as an address(index) into this `Slab`, which
     /// has just enough bits(`15`) to represent a `32^3` chunk full
     /// of `addr` blocks(although that would be unoptimal indeed).
-    addr_blocks: Slab<Box<dyn Any>>,
+    addr_blocks: Slab<Box<dyn Block>>,
     /// A thread-safe shared pointer to the game's `BlockRegistry`,
     /// containing type and identifier info about `Block`s which the
     /// chunk needs for indexing and mutating operations.
@@ -57,12 +57,12 @@ pub struct Chunk
 ///
 /// [Block]: crate::world::Block
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-struct BlockState(u16);
+pub struct BlockState(u16);
 
 /// An immutable reference to a `Chunk`'s entry(some implementor
 /// of `Block`).
 #[derive(Debug, Clone, Copy)]
-enum Ref<'a, T: Block>
+pub enum Ref<'a, T: Block>
 {
     /// The reference holds a block that can be deserialized from 6 bits
     Data(T),
@@ -74,12 +74,23 @@ enum Ref<'a, T: Block>
 /// `Block`). Re-serializes any changed state properties of the
 /// referenced block back into the `Chunk` when dropped.
 #[derive(Debug)]
-enum RefMut<'a, T: Block>
+pub enum RefMut<'a, T: Block>
 {
     /// The reference holds a block that can be deserialized from 6 bits
     Data(T, &'a mut BlockState),
     /// The reference is borrowing a block that's stored in the chunk as-is
     Addr(&'a mut T)
+}
+
+/// An immutable refernece to a `Chunk`'s entry(some implementor
+/// of `Block`), except type erasure has taken place. Exposes all
+/// the object-safe and constant functions of the `Block` trait.
+pub enum RefDyn<'a>
+{
+    /// The reference holds a block's state, deserialized on each method call
+    Data(Bits<6>, &'a BlockMeta),
+    /// The reference is borrowing a `dyn` block that's stored in the chunk as-is
+    Addr(&'a dyn Block),
 }
 
 impl Chunk
@@ -111,13 +122,13 @@ impl Chunk
     #[inline]
     fn flatten_idx(Vec3 { x, y, z }: Vec3<usize>) -> usize
     {
-        x + y * Chunk::SIZE + z * (Chunk::SIZE * Chunk::SIZE)
+        x + Chunk::SIZE * (y + Chunk::SIZE * z)
     }
 
     /// Get an immutable reference to the block at the given position, in chunk-space,
     /// without doing bounds check. Returns `None` if the block type found isn't
     /// matching to generic parameter `T`.
-    pub unsafe fn get_unchecked<T: Block>(&self, pos: Vec3<usize>) -> Option<impl Deref<Target = T> + '_>
+    pub unsafe fn get_unchecked<T: Block>(&self, pos: Vec3<usize>) -> Option<Ref<'_, T>>
     {
         // Get packed state
         let state = self.blocks.get_unchecked(Self::flatten_idx(pos));
@@ -140,9 +151,9 @@ impl Chunk
             // BlockRepr::Addr
             false =>
             {
-                self.addr_blocks
+                (self.addr_blocks
                     // SAFETY: Checked `!BlockState::is_data` in condition
-                    .get_unchecked(state.as_addr())
+                    .get_unchecked(state.as_addr()) as &dyn Any)
                     // Block type check
                     .downcast_ref::<T>()
                     // Borrow ref
@@ -154,7 +165,7 @@ impl Chunk
     /// Get an mutable reference to the block at the given position, in chunk-space,
     /// without doing bounds check. Returns `None` if the block type found isn't
     /// matching to generic parameter `T`.
-    pub unsafe fn get_unchecked_mut<T: Block>(&mut self, pos: Vec3<usize>) -> Option<impl DerefMut<Target = T> + '_>
+    pub unsafe fn get_unchecked_mut<T: Block>(&mut self, pos: Vec3<usize>) -> Option<RefMut<'_, T>>
     {
         // Get packed state
         let state = self.blocks.get_unchecked_mut(Self::flatten_idx(pos));
@@ -177,10 +188,12 @@ impl Chunk
             // BlockRepr::Addr
             false =>
             {
-                self.addr_blocks
+                (self.addr_blocks
                     // SAFETY: Checked `!BlockState::is_data` in condition
-                    .get_unchecked_mut(state.as_addr())
+                    .get_unchecked_mut(state.as_addr()) as &mut dyn Any)
                     // Block type check
+                    // Note: no need to check `T` is present in the `BlockRegistry`,
+                    // as method mutating the block storage do this already.
                     .downcast_mut::<T>()
                     // Borrow ref
                     .map(|block| RefMut::Addr(block))
@@ -214,7 +227,7 @@ impl Chunk
         };
 
         // Determine how to pack state 
-        match T::REPR
+        match T::repr()
         {
             // Serialize
             BlockRepr::Data =>
@@ -238,7 +251,7 @@ impl Chunk
     /// Get an immutable reference to the block at the given position in chunk-space,
     /// returning `None` if the block type found isn't `T` or if the coordinates provided
     /// exceed chunks' bounds.
-    pub fn get<T: Block>(&self, pos: Vec3<usize>) -> Option<impl Deref<Target = T> + '_>
+    pub fn get<T: Block>(&self, pos: Vec3<usize>) -> Option<Ref<'_, T>>
     {
         match Chunk::in_bounds(pos)
         {
@@ -253,7 +266,7 @@ impl Chunk
     /// Get an mutable reference to the block at the given position in chunk-space,
     /// returning `None` if the block type found isn't `T` or if the coordinates provided
     /// exceed chunks' bounds.
-    pub fn get_mut<T: Block>(&mut self, pos: Vec3<usize>)-> Option<impl DerefMut<Target = T> + '_>
+    pub fn get_mut<T: Block>(&mut self, pos: Vec3<usize>)-> Option<RefMut<'_, T>>
     {
         match Chunk::in_bounds(pos)
         {
@@ -275,6 +288,56 @@ impl Chunk
         if Chunk::in_bounds(pos)
         {
             unsafe { self.set_unchecked(pos, block) }
+        }
+    }
+
+    /// Get an immutable reference to the block at the given position, in chunk-space,
+    /// with type erasure but no bounds check. Returns `None` if the block type found
+    /// isn't in the game's `BlockRegistry`.
+    pub unsafe fn get_unchecked_dyn(&self, pos: Vec3<usize>) -> Option<RefDyn<'_>>
+    {
+        // Get packed state
+        let state = self.blocks.get_unchecked(Self::flatten_idx(pos));
+
+        // Interpret bits
+        match state.is_data()
+        {
+            // BlockRepr::Data
+            true =>
+            {
+                // SAFETY: Checked `BlockState::is_data` in condition
+                let (id, data) = state.as_data();
+
+                self.registry
+                    // Block meta access
+                    .meta(id)
+                    // Owned ref
+                    .map(|meta| RefDyn::Data(data, meta))
+            },
+            // BlockRepr::Addr
+            false =>
+            {
+                Some(RefDyn::Addr(self.addr_blocks
+                    // SAFETY: Checked `!BlockState::is_data` in condition
+                    .get_unchecked(state.as_addr())
+                    // Get the `&dyn Block`
+                    .as_ref()))
+            },
+        }
+    }
+
+    /// Get an immutable reference to the block at the given position, in chunk-space,
+    /// with type erasure. Returns `None` if the block type found isn't in the game's
+    /// `BlockRegistry` or if the coordinates provided exceed chunks' bounds.
+    pub fn get_dyn(&self, pos: Vec3<usize>) -> Option<RefDyn<'_>>
+    {
+        match Chunk::in_bounds(pos)
+        {
+            // SAFETY:
+            // Bounds just checked above.
+            true => unsafe { self.get_unchecked_dyn(pos) },
+            // Out of bounds
+            false => None
         }
     }
 }
@@ -381,6 +444,19 @@ impl<'a, T: Block> Drop for RefMut<'a, T>
             // ...and save it in case it changed.
             raw.0 &= 0b1111_1111_1100_0000;
             raw.0 |= data.inner() as u16;
+        }
+    }
+}
+
+impl<'a> RefDyn<'a>
+{
+    /// Get the display name of the `Block` being referenced to
+    pub fn name(&self) -> std::borrow::Cow<'static, str>
+    {
+        match self
+        {
+            RefDyn::Data(state, vtable) => (vtable.name)(*state),
+            RefDyn::Addr(block) => block.name(),
         }
     }
 }
