@@ -26,7 +26,7 @@ use crate::util::{ Bits, Registry };
 /// ```
 ///
 /// [BlockState]: crate::world::BlockState
-pub trait Block: BlockState + std::any::Any
+pub trait Block: BlockState + 'static
 {
     /// Unique string identifier for this type of block.
     /// (Should never change)

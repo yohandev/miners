@@ -11,7 +11,7 @@ blockdef!
     pub struct BlockWoodenPlanks
     {
         /// The type wooden planks
-        #[prop(Oak | Spruce | Birch | Jungle | Acacia | DarkOak )]
+        #[prop(Oak | Spruce | Birch | Jungle | Acacia | DarkOak)]
         variant: WoodVariant,
     }
 }

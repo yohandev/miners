@@ -1,3 +1,10 @@
+mod index7;
+mod index6;
+mod index5;
+mod index4;
+mod index3;
+mod index2;
+mod index;
 mod block;
 mod chunk;
 mod world;

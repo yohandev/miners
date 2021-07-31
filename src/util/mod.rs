@@ -1,3 +1,4 @@
+mod bits2;
 mod registry;
 mod bits;
 

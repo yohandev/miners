@@ -18,7 +18,7 @@ blockdef!
         #[prop(North | South | East | West | Up | Down)]
         facing: Direction,
         /// The type wooden slab
-        #[prop(Oak | Spruce | Birch | Jungle | Acacia | DarkOak )]
+        #[prop(Oak | Spruce | Birch | Jungle | Acacia | DarkOak)]
         variant: WoodVariant,
     }
 }
