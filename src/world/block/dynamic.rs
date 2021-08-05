@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 use std::borrow::Cow;
-use std::any::Any;
+use std::any::TypeId;
 
 use ptr_meta::{ DynMetadata, pointee };
 
@@ -8,7 +8,7 @@ use crate::world::block::{ Block, self };
 
 /// The [Block] trait, made object-safe
 #[pointee]
-pub trait Object: Any
+pub trait Object: block::ObjectPriv
 {
     /// See [Block::ID]
     fn id(&self) -> &'static str;
@@ -17,11 +17,49 @@ pub trait Object: Any
     fn name(&self) -> Cow<'static, str>;
 }
 
+mod private
+{
+    use super::*;
+
+    /// Private parts of the [block::Object] trait, to prevent accidental implementation
+    /// of the trait(the API only exposes the [Block] trait and then relies on the blanket
+    /// implementation)
+    pub trait ObjectPriv: 'static
+    {
+        /// Get the [TypeId] of the concrete [Block] represented by this object
+        fn inner_type_id(&self) -> TypeId;
+
+        /// Downcast this type-erased [Block] into a [block::Ref], `into`.
+        ///
+        /// # Safety
+        /// Caller must guarentee that `into` points to a valid `block::Ref<T>`
+        /// where `T: Block` and `self.inner_type_id() == TypeId::of::<T>()`.
+        /// 
+        /// The `into` `block::Ref` may be uninit(via `MaybeUninit`), so implementor
+        /// *must* write to this value.
+        unsafe fn unpack_into<'a>(&'a self, into: *mut ());
+    }
+}
+// `borrow` module needs access to this
+pub(super) use private::ObjectPriv;
+
 /// Blanket implementation for every `Block` type
 impl<T: Block> block::Object for T
 {
     fn id(&self) -> &'static str { <T as Block>::ID }
     fn name(&self) -> Cow<'static, str> { <T as Block>::name(self) }
+}
+
+impl<T: Block> private::ObjectPriv for T
+{
+    fn inner_type_id(&self) -> TypeId { TypeId::of::<T>() }
+    
+    unsafe fn unpack_into<'a>(&'a self, into: *mut ())
+    {
+        let out = &mut *(into as *mut block::Ref<'a, T>);
+
+        *out = block::Ref::Ptr(self);
+    }
 }
 
 /// A registry containing all the usable [Block] types in the game, along with
@@ -76,6 +114,20 @@ fn vtable_of<B: Block>() -> DynMetadata<dyn block::Object>
             {
                 fn id(&self) -> &'static str { <T as Block>::ID }
                 fn name(&self) -> Cow<'static, str> { <T as Block>::name(&self.unpack()) }
+            }
+            impl<T: Block> private::ObjectPriv for Typed<T>
+            {
+                // Don't return `TypeId` of `Typed<T>`, transmuting between that
+                // and `T` is *wrong*
+                fn inner_type_id(&self) -> TypeId { TypeId::of::<T>() }
+
+                // Important distinction that `into` isn't a Ref<Typed<T>>
+                unsafe fn unpack_into<'a>(&'a self, into: *mut ())
+                {
+                    let out = &mut *(into as *mut block::Ref<'a, T>);
+
+                    *out = block::Ref::Val(self.unpack(), PhantomData);
+                }
             }
 
             // vtable is over a packed block that "owns" a `B`

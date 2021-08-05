@@ -1,10 +1,14 @@
 pub mod packed;
 mod dynamic;
+mod borrow;
 
 pub use miners_macros::Block;
 
 pub use dynamic::{ Object, Registry };
+pub use borrow::{ Ref };
 pub use packed::Packed;
+
+use dynamic::ObjectPriv;
 
 use crate::util::Bits;
 
