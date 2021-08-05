@@ -1,15 +1,8 @@
-mod meta;
-// mod borrow;
-// // mod raw
+mod dynamic;
 mod packed;
-mod object;
 
-pub use meta::{ Id, Repr, Registry };
-pub use object::{ Object };
-     use object::Vtable;
-// pub use borrow::{ Ref };
-
-use std::borrow::Cow;
+pub use dynamic::{ Object, Registry };
+pub use packed::Packed;
 
 use crate::util::Bits;
 
@@ -42,80 +35,62 @@ pub trait Block: Object + Sized + 'static
     const REPR: Repr<Self>;
 
     /// Display name for this instance of a block
-    fn name(&self) -> Cow<'static, str>;
+    fn name(&self) -> std::borrow::Cow<'static, str>;
 }
 
-/// Packed representation of a [Block]
-/// ```rust
-/// // either 15 bits of arbitrarily encoded state
-/// // data(val block) or 15 bits = 32^3 ID
-/// // to a wider block(ptr block)
-/// #[repr(u16)]
-/// struct Block
-/// {
-///     discriminant: 1 bit,
-///     magic: union _
-///     {
-///         // val block(discriminant = 0)
-///         data: struct _
-///         {
-///             id: 9 bits,
-///             state: 6 bits,
-///         },
-///         // ptr block(discriminant = 1)
-///         addr: 15 bits,
-///     }
-/// } // 16-bits
-/// ```
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Packed(u16);
+/// Unique identifier for a type of [Block], assigned at runtime by
+/// the game's block [Registry]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Id(u16);
 
-impl Packed
+/// Represents the two ways [Block]'s state can be packed. This must be known statically,
+/// but deriving the [Block] trait takes care of that.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Repr<T: Block + Sized>
 {
-    /// Construct a new packed block state from a [Block]'s [Id] and its
-    /// state serialized to 6 bits
-    #[inline]
-    const fn from_val(id: Id, data: Bits<6>) -> Self
-    {
-        Self((id.inner() << 6) | data.inner() as u16)
-    }
-
-    /// Construct a new packed block state from a [Block]'s slot in the
-    /// chunk's internal unserializable blocks `Slab`
-    #[inline]
-    const fn from_ptr(addr: usize) -> Self
-    {
-        Self((1 << 15) | addr as u16)
-    }
-
-    /// Can this [block::Packed](Packed)'s bits be interpreted as:
-    /// `{ 9 bits id, 6 bits state }`.
-    /// And, effectively, is it safe to call [block::Packed::as_val](Packed::as_val)?
-    #[inline]
-    const fn is_val(self) -> bool { self.0 >> 15 == 0 }
-    /// Can this [block::Packed](Packed)'s bits be interpreted as:
-    /// `{ 15 bits slab slot }`
-    /// And, effectively, is it safe to call [block::Packed::as_ptr](Packed::as_ptr)?
-    #[inline]
-    const fn is_ptr(self) -> bool { !self.is_val() }
-
-    /// Interpret this [block::Packed](Packed)'s bits as `{ 9 bits id, 6 bits state }`.
+    /// The [Block]'s state can be entirely packed inline into 6 bits. The packed state's
+    /// bits look like this:
+    /// #[repr(u16)]
+    /// struct Block
+    /// {
+    ///     // Set to 0 for `block::Repr::Val`
+    ///     discriminant: 1 bit,
+    /// 
+    ///     // Depends on the `Block` instance
+    ///     id: 9 bits,
+    ///     state: 6 bits,
     ///
-    /// SAFETY: Make sure that `block::Packed::is_val(...)` or `!block::Packed::is_ptr(...)`
-    #[inline]
-    const unsafe fn as_val(self) -> (Id, Bits<6>)
+    /// } // 16-bits
+    Val
     {
-        (
-            Id::new((self.0 & 0b0111_1111_1100_0000) >> 6),
-            Bits::new(self.0 as u8),
-        )
-    }
-    /// Interpret this [block::Packed](Packed)'s bits as `{ 15 bits slab slot }`.
+        /// (Re)serialize this instance of a [Block]'s state in 6 bits. Note that this must be
+        /// symmetric with the other function member of this [block::Repr::Val], ie.
+        /// ```
+        /// let og_block = BlockWooo::random();
+        /// 
+        /// assert_eq!(BlockWooo::from_packed(BlockWooo::into_packed(og_block)), og_block);
+        /// ```
+        into_packed: fn(state: T) -> Bits<6>,
+        /// Deserialize this instance of a [Block]'s state from 6 bits. Note that this must be
+        /// symmetric with the other function member of this [block::Repr::Val], ie.
+        /// ```
+        /// let block_state = get_state_i_solemnly_swear_is_block_woo();
+        /// 
+        /// assert_eq!(BlockWooo::into_packed(BlockWooo::from_packed(block_state)), block_state);
+        /// ```
+        from_packed: fn(state: Bits<6>) -> T,
+    },
+    /// The [Block]'s state can*not* be entirely packed into 6 bits and thus lives on the heap.
+    /// The packed state's bits look like this:
+    /// #[repr(u16)]
+    /// struct Block
+    /// {
+    ///     // Set to 1 for `block::Repr::Ptr`
+    ///     discriminant: 1 bit,
+    /// 
+    ///     // Points to one of `32^3` slots inside this block's `Chunk` 
+    ///     addr: 15 bits,
     ///
-    /// SAFETY: Make sure that `block::Packed::is_ptr(...)` or `!block::Packed::is_val(...)`
-    #[inline]
-    const unsafe fn as_ptr(self) -> usize
-    {
-        (self.0 & 0b0111_1111_1111_1111) as _
-    }
+    /// } // 16-bits
+    Ptr,
 }

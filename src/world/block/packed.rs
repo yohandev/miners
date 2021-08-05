@@ -1,6 +1,5 @@
 use crate::util::Bits;
-
-use super::Id;
+use crate::world::block;
 
 /// Packed representation of a [Block]
 /// ```rust
@@ -31,9 +30,9 @@ use super::Id;
 pub union Packed
 {
     /// Check `block::Packed::tag` before accessing!
-    val: Val,
+    pub val: Val,
     /// Check `block::Packed::tag` before accessing!
-    ptr: Ptr,
+    pub ptr: Ptr,
 }
 
 /// Output of `block::Packed::tag`
@@ -76,6 +75,20 @@ impl Packed
         // 0 and 1, which exhausts `Repr`.
         unsafe { std::mem::transmute(self.val.0 >> 15) }
     }
+
+    /// Create a new packed block with a "value" representation
+    #[inline]
+    pub const fn from_val(id: block::Id, state: Bits<6>) -> Self
+    {
+        Self { val: Val((id.0 << 6) | state.inner() as u16) }
+    }
+
+    /// Create a new packed block with a "pointer" representation
+    #[inline]
+    pub const fn from_ptr(slot: usize) -> Self
+    {
+        Self { ptr: Ptr((1 << 15) | slot as u16) }
+    }
 }
 
 impl Val
@@ -83,15 +96,15 @@ impl Val
     /// This packed block's numerical identifier, assigned at runtime by the
     /// block registry.
     #[inline]
-    pub fn id(self) -> Id
+    pub const fn id(self) -> block::Id
     {
-        Id::new((self.0 & 0b0111_1111_1100_0000) >> 6)
+        block::Id((self.0 & 0b0111_1111_1100_0000) >> 6)
     }
 
     /// This packed block's packed state, to be interpreted by the vtable corresponding
     /// to `self.id()` in the block registry.
     #[inline]
-    pub fn state(self) -> Bits<6>
+    pub const fn state(self) -> Bits<6>
     {
         Bits::new(self.0 as u8)
     }
@@ -101,7 +114,7 @@ impl Ptr
 {
     /// This packed block's slot within its `Chunk`'s pointer-blocks.
     #[inline]
-    pub fn slot(self) -> usize
+    pub const fn slot(self) -> usize
     {
         (self.0 & 0b0111_1111_1111_1111) as _
     }
