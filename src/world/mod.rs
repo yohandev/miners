@@ -1,11 +1,10 @@
 pub mod block;
-pub mod chunk;
-// mod world;
+mod chunk;
+mod world;
 
-// pub use _block::{ Block, BlockId, BlockState, BlockRepr, BlockRegistry, BlockMeta };
-pub use block::{ Block, /*Ref as BlockRef RefMut as BlockRefMut*/ };
-// pub use chunk::Chunk;
-// pub use world::World;
+pub use block::Block;
+pub use chunk::Chunk;
+pub use world::World;
 
 // pub use crate::blockdef;
 

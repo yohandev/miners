@@ -1,10 +1,7 @@
 use std::collections::HashMap;
-use std::ops::Index;
 
+use crate::world::{ Chunk, block };
 use crate::math::Vec3;
-
-use crate::world::chunk::{ Ref, RefMut, RefDyn };
-use crate::world::{ Block, Chunk };
 
 pub struct World
 {
@@ -13,7 +10,7 @@ pub struct World
 
 impl World
 {
-    pub fn get<T: Block>(&self, pos: Vec3<i32>) -> Option<Ref<'_, T>>
+    pub fn get(&self, pos: Vec3<i32>) -> Option<&dyn block::Object>
     {
         self.chunks
             // Chunk position, 1 unit = 32 blocks
