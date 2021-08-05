@@ -1,11 +1,12 @@
 mod meta;
-mod borrow;
-// mod raw
+// mod borrow;
+// // mod raw
+mod packed;
 mod object;
 
 pub use meta::{ Id, Repr, Registry };
 pub use object::{ Object };
-    use object::Vtable;
+     use object::Vtable;
 // pub use borrow::{ Ref };
 
 use std::borrow::Cow;

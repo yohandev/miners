@@ -1,6 +1,3 @@
-use std::any::{ Any, TypeId };
-use std::borrow::Cow;
-
 use crate::world::block::{ Block, Vtable, self };
 use crate::util::Bits;
 
@@ -113,7 +110,7 @@ impl Default for Registry
     /// Creates a new registry with just `vanilla:air` registered.
     fn default() -> Self
     {
-        let mut registry = Self(crate::util::Registry::default());
+        let /*mut*/ registry = Self(crate::util::Registry::default());
 
         //registry.register::<crate::vanilla::blocks::BlockAir>();
         registry
