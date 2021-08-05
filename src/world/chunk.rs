@@ -64,10 +64,10 @@ impl Chunk
     /// Get an immutable reference to the block at the given position, in chunk-space,
     /// without doing bounds check. Returns `None` if the block type found isn't
     /// matching to generic parameter `T`.
-    pub unsafe fn get_unchecked(&self, pos: Vec3<usize>) -> Option<&dyn block::Object>
+    pub unsafe fn get_unchecked<'a>(&'a self, pos: Vec3<usize>) -> Option<&'a dyn block::Object>
     {
         // Get packed state
-        let state = self.blocks.get_unchecked(Self::flatten_idx(pos));
+        let state: &'a block::Packed = self.blocks.get_unchecked(Self::flatten_idx(pos));
 
         // Interpret bits
         match state.tag()
@@ -90,7 +90,7 @@ impl Chunk
     /// Get an mutable reference to the block at the given position, in chunk-space,
     /// without doing bounds check. Returns `None` if the block type found isn't
     /// matching to generic parameter `T`.
-    pub unsafe fn get_unchecked_mut(&mut self, pos: Vec3<usize>) -> Option<&mut dyn block::Object>
+    pub unsafe fn get_unchecked_mut<'a>(&'a mut self, pos: Vec3<usize>) -> Option<&'a mut dyn block::Object>
     {
         // Get packed state
         let state = self.blocks.get_unchecked_mut(Self::flatten_idx(pos));
@@ -162,7 +162,7 @@ impl Chunk
     /// Get an immutable reference to the block at the given position in chunk-space,
     /// returning `None` if the block type found isn't `T` or if the coordinates provided
     /// exceed chunks' bounds.
-    pub fn get(&self, pos: Vec3<usize>) -> Option<&dyn block::Object>
+    pub fn get<'a>(&'a self, pos: Vec3<usize>) -> Option<&'a dyn block::Object>
     {
         match Chunk::in_bounds(pos)
         {
@@ -177,7 +177,7 @@ impl Chunk
     /// Get an mutable reference to the block at the given position in chunk-space,
     /// returning `None` if the block type found isn't `T` or if the coordinates provided
     /// exceed chunks' bounds.
-    pub fn get_mut<T: Block>(&mut self, pos: Vec3<usize>)-> Option<&mut dyn block::Object>
+    pub fn get_mut<'a>(&'a mut self, pos: Vec3<usize>)-> Option<&'a mut dyn block::Object>
     {
         match Chunk::in_bounds(pos)
         {

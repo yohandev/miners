@@ -1,6 +1,8 @@
 pub mod packed;
 mod dynamic;
 
+pub use miners_macros::Block;
+
 pub use dynamic::{ Object, Registry };
 pub use packed::Packed;
 

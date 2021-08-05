@@ -8,43 +8,55 @@ pub use world::World;
 
 // pub use crate::blockdef;
 
-// #[cfg(test)]
-// mod test
-// {
-//     use std::sync::Arc;
+#[cfg(test)]
+mod test
+{
+    use std::sync::Arc;
 
-//     use crate::blocks::{ BlockAir, BlockChest, BlockGrass };
-//     use crate::blocks::props::Facing;
-//     use crate::math::vec3;
+    use crate::math::{ Direction, vec3 };
+    use crate::world::{ Chunk, block };
+    use crate::vanilla::blocks::*;
 
-//     use super::*;
+    #[test]
+    fn chunk_storage()
+    {
+        let mut registry = block::Registry::default();
 
-//     #[test]
-//     fn chunk_storage()
-//     {
-//         let mut registry = BlockRegistry::default();
+        registry.register::<BlockAir>();
+        registry.register::<BlockWoodenPlanks>();
+        registry.register::<BlockWoodenSlab>();
+        registry.register::<BlockChest>();
 
-//         registry.insert::<BlockAir>();
-//         registry.insert::<BlockGrass>();
-//         registry.insert::<BlockChest>();
+        let mut chunk = Chunk::new(Arc::new(registry));
 
-//         let mut chunk = Chunk::new(Arc::new(registry));
+        dbg!(chunk.get(vec3(0, 0, 0)).map(|b| b.name()));
 
-//         dbg!(chunk.get::<BlockAir>(vec3(0, 0, 0)));
+        let _a = chunk.get_mut(vec3(0, 0, 0)).unwrap();
+        
+        chunk.set(vec3(0, 0, 0), BlockWoodenPlanks { variant: WoodVariant::Birch });
+        
+        dbg!(chunk.get(vec3(0, 0, 0)).map(|b| b.name()));
 
-//         chunk.set(vec3(0, 0, 0), BlockGrass);
+        chunk.set(vec3(0, 0, 0), BlockChest
+            {
+                facing: Direction::North,
+                contents: vec!["Stick x64", "Diamonds x3"]
+            }
+        );
+        
+        dbg!(chunk.get(vec3(0, 0, 0)).map(|b| b.name()));
 
-//         dbg!(chunk.get::<BlockAir>(vec3(0, 0, 0)));
-//         dbg!(chunk.get::<BlockGrass>(vec3(0, 0, 0)));
+        chunk.set(vec3(1, 0, 0), BlockChest
+            {
+                facing: Direction::North,
+                contents: vec!["Dirt x12"]
+            }
+        );
+        chunk.set(vec3(0, 1, 0), BlockWoodenPlanks { variant: WoodVariant::Birch });
 
-//         chunk.set(vec3(0, 0, 0), BlockChest { inventory: vec!["Stick x64".into()], facing: Facing::East });
-
-//         dbg!(chunk.get::<BlockGrass>(vec3(0, 0, 0)));
-//         dbg!(chunk.get::<BlockChest>(vec3(0, 0, 0)));
-
-//         chunk.set(vec3(0, 0, 0), BlockGrass);
-
-//         dbg!(chunk.get::<BlockChest>(vec3(0, 0, 0)));
-//         dbg!(chunk.get::<BlockGrass>(vec3(0, 0, 0)));
-//     }
-// }
+        dbg!(chunk.get(vec3(0, 0, 0)).map(|b| b.name()));
+        dbg!(chunk.get(vec3(1, 0, 0)).map(|b| b.name()));
+        dbg!(chunk.get(vec3(0, 1, 0)).map(|b| b.name()));
+        dbg!(chunk.get(vec3(0, 10, 0)).map(|b| b.name()));
+    }
+}
