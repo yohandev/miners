@@ -59,6 +59,6 @@ mod test
         dbg!(chunk.get(vec3(0, 1, 0)).map(|b| b.name()));
         dbg!(chunk.get(vec3(0, 10, 0)).map(|b| b.name()));
 
-        dbg!(chunk.get(vec3(0, 0, 0)).unwrap().cast::<BlockAir>());
+        dbg!(chunk[vec3(0, 0, 0)].cast::<BlockAir>());
     }
 }

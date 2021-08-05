@@ -208,6 +208,7 @@ impl Index<Vec3<usize>> for Chunk
 {
     type Output = dyn block::Object;
 
+    #[inline]
     fn index(&self, index: Vec3<usize>) -> &Self::Output
     {
         self.get(index).unwrap()
@@ -216,8 +217,29 @@ impl Index<Vec3<usize>> for Chunk
 
 impl IndexMut<Vec3<usize>> for Chunk
 {
+    #[inline]
     fn index_mut(&mut self, index: Vec3<usize>) -> &mut Self::Output
     {
         self.get_mut(index).unwrap()
+    }
+}
+
+impl Index<(usize, usize, usize)> for Chunk
+{
+    type Output = dyn block::Object;
+
+    #[inline]
+    fn index(&self, index: (usize, usize, usize)) -> &Self::Output
+    {
+        self.get(index.into()).unwrap()
+    }
+}
+
+impl IndexMut<(usize, usize, usize)> for Chunk
+{
+    #[inline]
+    fn index_mut(&mut self, index: (usize, usize, usize)) -> &mut Self::Output
+    {
+        self.get_mut(index.into()).unwrap()
     }
 }
