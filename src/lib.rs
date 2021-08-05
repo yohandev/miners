@@ -2,4 +2,4 @@ pub mod world;
 pub mod math;
 pub mod util;
 
-pub mod vanilla;
+// pub mod vanilla;
