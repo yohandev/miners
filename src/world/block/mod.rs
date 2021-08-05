@@ -1,5 +1,5 @@
+pub mod packed;
 mod dynamic;
-mod packed;
 
 pub use dynamic::{ Object, Registry };
 pub use packed::Packed;

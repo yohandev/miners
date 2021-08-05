@@ -1,5 +1,5 @@
-mod block;
-// mod chunk;
+pub mod block;
+pub mod chunk;
 // mod world;
 
 // pub use _block::{ Block, BlockId, BlockState, BlockRepr, BlockRegistry, BlockMeta };

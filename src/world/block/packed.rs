@@ -89,6 +89,14 @@ impl Packed
     {
         Self { ptr: Ptr((1 << 15) | slot as u16) }
     }
+
+    /// Create a new packed block with a "value" representation, ID of 0
+    /// and state encoded as 0s. Basically, gets a packed air block.
+    #[inline]
+    pub const fn zeroed() -> Self
+    {
+        Self { val: Val(0) }
+    }
 }
 
 impl Val
