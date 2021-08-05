@@ -137,7 +137,14 @@ impl Chunk
             // Found in registry
             Some(id) => id,
             // Not registered, early return
-            None => return
+            None =>
+            {
+                #[cfg(debug_assertions)]
+                println!("Attempted to set unregistered block {1} in a chunk.\n{0}",
+                "Use `BlockRegistry::register` beforehand to add it.", T::ID);
+
+                return
+            }
         };
 
         // Determine how to pack state 
