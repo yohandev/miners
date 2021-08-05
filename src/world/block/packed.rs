@@ -116,6 +116,16 @@ impl Val
     {
         Bits::new(self.0 as u8)
     }
+
+    /// Update this packed blocks' packed state
+    #[inline]
+    pub fn set_state(&mut self, state: Bits<6>)
+    {
+        // Clear bits
+        self.0 &= 0b1111_1111_1100_0000;
+        // Set
+        self.0 |= state.inner() as u16;
+    }
 }
 
 impl Ptr
@@ -142,6 +152,22 @@ impl PartialEq for Packed
 
 impl Eq for Packed { }
 
+impl std::fmt::Debug for Val
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    {
+        write!(f, "Val {{ id: {:?}, state: {:?} }}", self.id(), self.state())
+    }
+}
+
+impl std::fmt::Debug for Ptr
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    {
+        write!(f, "Ptr {{ slot: {:?} }}", self.slot())
+    }
+}
+
 impl std::fmt::Debug for Packed
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
@@ -152,17 +178,13 @@ impl std::fmt::Debug for Packed
             {
                 // SAFETY:
                 // Tag just checked
-                let val = unsafe { self.val };
-
-                write!(f, "Val {{ id: {:?}, state: {:?} }}", val.id(), val.state())
+                unsafe { self.val }.fmt(f)
             },
             Repr::Ptr =>
             {
                 // SAFETY:
                 // Tag just checked
-                let ptr = unsafe { self.ptr };
-
-                write!(f, "Ptr {{ slot: {:?} }}", ptr.slot())
+                unsafe { self.ptr }.fmt(f)
             },
         }
     }

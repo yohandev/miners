@@ -154,7 +154,7 @@ impl Chunk
             block::Repr::Val { into_packed, .. } =>
             {
                 // Pack new block's state and put in chunk
-                *old = block::Packed::from_val(id, into_packed(block))
+                *old = block::Packed::from_val(id, into_packed(&block))
             },
             // Save as-is
             block::Repr::Ptr =>

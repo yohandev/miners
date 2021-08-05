@@ -9,6 +9,7 @@ pub use borrow::{ Ref };
 pub use packed::Packed;
 
 use dynamic::ObjectPriv;
+use borrow::RefMutPriv;
 
 use crate::util::Bits;
 
@@ -51,7 +52,7 @@ pub struct Id(u16);
 
 /// Represents the two ways [Block]'s state can be packed. This must be known statically,
 /// but deriving the [Block] trait takes care of that.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 pub enum Repr<T: Block + Sized>
 {
     /// The [Block]'s state can be entirely packed inline into 6 bits. The packed state's
@@ -76,7 +77,7 @@ pub enum Repr<T: Block + Sized>
         /// 
         /// assert_eq!(BlockWooo::from_packed(BlockWooo::into_packed(og_block)), og_block);
         /// ```
-        into_packed: fn(state: T) -> Bits<6>,
+        into_packed: fn(state: &T) -> Bits<6>,
         /// Deserialize this instance of a [Block]'s state from 6 bits. Note that this must be
         /// symmetric with the other function member of this [block::Repr::Val], ie.
         /// ```

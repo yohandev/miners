@@ -38,6 +38,9 @@ mod private
         /// The `into` `block::Ref` may be uninit(via `MaybeUninit`), so implementor
         /// *must* write to this value.
         unsafe fn unpack_into<'a>(&'a self, into: *mut ());
+
+        /// Same as [unpack_into], but with a [block::RefMutPriv]
+        unsafe fn unpack_into_mut<'a>(&'a mut self, into: *mut ());
     }
 }
 // `borrow` module needs access to this
@@ -59,6 +62,12 @@ impl<T: Block> private::ObjectPriv for T
         let out = &mut *(into as *mut block::Ref<'a, T>);
 
         *out = block::Ref::Ptr(self);
+    }
+    unsafe fn unpack_into_mut<'a>(&'a mut self, into: *mut ())
+    {
+        let out = &mut *(into as *mut block::RefMutPriv<'a, T>);
+
+        *out = block::RefMutPriv::Ptr(self);
     }
 }
 
@@ -128,6 +137,12 @@ fn vtable_of<B: Block>() -> DynMetadata<dyn block::Object>
 
                     *out = block::Ref::Val(self.unpack(), PhantomData);
                 }
+                unsafe fn unpack_into_mut<'a>(&'a mut self, into: *mut ())
+                {
+                    let out = &mut *(into as *mut block::RefMutPriv<'a, T>);
+
+                    *out = block::RefMutPriv::Val(self.unpack(), &mut self.0)
+                }   
             }
 
             // vtable is over a packed block that "owns" a `B`
