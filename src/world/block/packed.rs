@@ -38,6 +38,7 @@ pub union Packed
 
 /// Output of `block::Packed::tag`
 #[repr(u16)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Repr
 {
     // The `block::Packed` contains a block with "value" representation, so
@@ -81,6 +82,7 @@ impl Val
 {
     /// This packed block's numerical identifier, assigned at runtime by the
     /// block registry.
+    #[inline]
     pub fn id(self) -> Id
     {
         Id::new((self.0 & 0b0111_1111_1100_0000) >> 6)
@@ -88,6 +90,7 @@ impl Val
 
     /// This packed block's packed state, to be interpreted by the vtable corresponding
     /// to `self.id()` in the block registry.
+    #[inline]
     pub fn state(self) -> Bits<6>
     {
         Bits::new(self.0 as u8)
@@ -97,8 +100,49 @@ impl Val
 impl Ptr
 {
     /// This packed block's slot within its `Chunk`'s pointer-blocks.
+    #[inline]
     pub fn slot(self) -> usize
     {
         (self.0 & 0b0111_1111_1111_1111) as _
+    }
+}
+
+impl PartialEq for Packed
+{
+    #[inline]
+    fn eq(&self, other: &Self) -> bool
+    {
+        // SAFETY:
+        // Doesn't matter whether `self.ptr` or `self.val` is used, both
+        // point to the same `u16`
+        unsafe { self.ptr.0 == other.ptr.0 }
+    }
+}
+
+impl Eq for Packed { }
+
+impl std::fmt::Debug for Packed
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    {
+        match self.tag()
+        {
+            Repr::Val =>
+            {
+                // SAFETY:
+                // Tag just checked
+                let val = unsafe { self.val };
+
+                write!(f, "Val {{ id: {:?}, state: {:?} }}", val.id(), val.state())
+            },
+            Repr::Ptr =>
+            {
+                // SAFETY:
+                // Tag just checked
+                let ptr = unsafe { self.ptr };
+
+                write!(f, "Ptr {{ slot: {:?} }}", ptr.slot())
+            },
+        }
     }
 }
