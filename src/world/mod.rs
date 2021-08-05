@@ -68,5 +68,15 @@ mod test
         dbg!(chunk[(1, 0, 0)].cast::<BlockWoodenPlanks>());
         dbg!(*chunk[(0, 1, 0)].cast::<BlockWoodenPlanks>().unwrap());
         dbg!(chunk[(0, 10, 0)].cast::<BlockWoodenPlanks>());
+
+        if let Some(mut planks) = chunk[(0, 1, 0)].cast_mut::<BlockWoodenPlanks>()
+        {
+            println!("BEFORE: {:?}", planks);
+
+            planks.variant = WoodVariant::Oak;
+
+            println!("AFTER: {:?}", planks);
+        };
+        println!("PRESERVED?: {:?}", chunk[(0, 1, 0)].cast_mut::<BlockWoodenPlanks>().unwrap());
     }
 }
