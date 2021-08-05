@@ -6,6 +6,7 @@ use std::marker::PhantomData;
 use crate::world::block::{ Block, self };
 
 /// A strongly-typed reference to a [Block], obtained from an `&dyn block::Object`
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ref<'a, T: Block>
 {
     /// The block has a `val` representation, and therefore is unpacked and

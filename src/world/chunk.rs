@@ -1,3 +1,4 @@
+use std::ops::{ Index, IndexMut };
 use std::sync::Arc;
 
 use slab::Slab;
@@ -200,5 +201,23 @@ impl Chunk
         {
             unsafe { self.set_unchecked(pos, block) }
         }
+    }
+}
+
+impl Index<Vec3<usize>> for Chunk
+{
+    type Output = dyn block::Object;
+
+    fn index(&self, index: Vec3<usize>) -> &Self::Output
+    {
+        self.get(index).unwrap()
+    }
+}
+
+impl IndexMut<Vec3<usize>> for Chunk
+{
+    fn index_mut(&mut self, index: Vec3<usize>) -> &mut Self::Output
+    {
+        self.get_mut(index).unwrap()
     }
 }
