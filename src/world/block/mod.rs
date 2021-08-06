@@ -2,7 +2,7 @@ pub mod packed;
 mod dynamic;
 mod borrow;
 
-pub use blockdef::State;
+pub use blockdef::{ State, blockdef };
 
 pub use dynamic::{ Object, Registry };
 pub use borrow::{ Ref };

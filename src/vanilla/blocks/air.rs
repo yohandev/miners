@@ -1,19 +1,10 @@
-// use crate::world::blockdef;
-use crate::world::block::{ Block, self };
+use crate::world::blockdef;
 
-// blockdef!
-// {
-//     id: "air",
-//     name: |self| "Air",
+blockdef!
+{
+    id: "air",
+    name: "Air",
 
-    /// The default "empty" block, with the state properties.
-    #[derive(block::State, Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct BlockAir { }
-
-    impl Block for BlockAir
-    {
-        const ID: &'static str = "air";
-
-        fn name(&self) -> std::borrow::Cow<'static, str> { "Air".into() }
-    }
-// }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct BlockAir;
+}

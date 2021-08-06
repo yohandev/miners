@@ -5,7 +5,6 @@ authors = ["yohandev"]
 edition = "2018"
 
 [dependencies]
-miners_macros = { path = "../macros" }
 blockdef = { path = "./src/world/block/blockdef" }
 static_assertions = "1.1.0"
 ptr_meta = "0.1.3"

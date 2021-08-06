@@ -1,5 +1,37 @@
 mod block_state;
+mod blockdef;
 mod util;
+
+#[proc_macro]
+pub fn blockdef(input: proc_macro::TokenStream) -> proc_macro::TokenStream
+{
+    let input = syn::parse_macro_input!(input as blockdef::MacroInput);
+
+    let path = util::mod_path("miners_common", "world::block");
+
+    let ty = input.ty;
+    let ty_name = &ty.ident;
+
+    let id = input.id;
+    let name = input.name;
+
+    let expanded = quote::quote!
+    {
+        #[derive(#path::State)]
+        #ty
+
+        impl #path::Block for #ty_name
+        {
+            const ID: &'static str = #id;
+            
+            fn name(&self) -> std::borrow::Cow<'static, str>
+            {
+                { #name }.into()
+            }
+        }
+    };
+    expanded.into()
+}
 
 #[proc_macro_derive(State, attributes(prop))]
 pub fn derive_block_state(input: proc_macro::TokenStream) -> proc_macro::TokenStream

@@ -1,32 +1,30 @@
-use crate::world::block::{ Block, self };
+use std::borrow::Cow;
+
+use crate::world::blockdef;
 use crate::math::Direction;
 
 pub type Inventory = Vec<&'static str>;
 
-#[derive(block::State, Debug, Clone, PartialEq, Eq)]
-pub struct BlockChest
+blockdef!
 {
-    /// Items in this chest
-    #[prop(!)]
-    pub contents: Inventory,
-    /// Which side the buckle of this chest is facing
-    #[prop(North | South | East | West)]
-    pub facing: Direction,
-    /// This chest's custom name
-    #[prop(!)]
-    pub name: Option<String>,
-}
-
-impl Block for BlockChest
-{
-    const ID: &'static str = "chest";
-
-    fn name(&self) -> std::borrow::Cow<'static, str>
+    id: "chest",
+    name: match &self.name
     {
-        match &self.name
-        {
-            Some(name) => name.clone().into(),
-            None => "Chest".into(),
-        }
+        Some(x) => Cow::Owned(x.clone()),
+        None => Cow::Borrowed("chest"),
+    },
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct BlockChest
+    {
+        /// Items in this chest
+        #[prop(!)]
+        pub contents: Inventory,
+        /// Which side the buckle of this chest is facing
+        #[prop(North | South | East | West)]
+        pub facing: Direction,
+        /// This chest's custom name
+        #[prop(!)]
+        pub name: Option<String>,
     }
 }

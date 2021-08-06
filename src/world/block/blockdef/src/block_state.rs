@@ -156,7 +156,7 @@ impl TryFrom<syn::Attribute> for Attribute
             emit_error!(&attr.path, format!("Expected one of:\n{}\n{}\n{}",
                 "`#[prop(!)]`           - Field isn't sized or too large",
                 "`#[prop(0..16)]`       - Field is an integer range",
-                "`#[prop(Foo | Bar)]`   - Field accepts these `enum` variants"
+                "`#[prop(Foo | Bar)]`   - Field accepts these `enum` variants",
             ))
         }
     }

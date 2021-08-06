@@ -2,11 +2,9 @@ pub mod block;
 mod chunk;
 mod world;
 
-pub use block::Block;
+pub use block::{ Block, blockdef };
 pub use chunk::Chunk;
 pub use world::World;
-
-// pub use crate::blockdef;
 
 #[cfg(test)]
 mod test
