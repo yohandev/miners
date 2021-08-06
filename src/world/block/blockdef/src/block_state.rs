@@ -2,7 +2,7 @@ use std::ops::{ Range, RangeInclusive };
 use std::convert::{ TryFrom, TryInto };
 
 use syn::spanned::Spanned;
-use syn::{Data, Fields, Index, LitInt, Member, RangeLimits, Token, Type, Variant};
+use syn::{ Data, Fields, Index, LitInt, Member, RangeLimits, Token, Type, Variant };
 use syn::parse::{Parse, ParseBuffer, ParseStream};
 use proc_macro2::Ident;
 
@@ -16,13 +16,13 @@ pub struct DeriveInput
 /// A field within a struct deriving `block::State`
 pub struct Field
 {
-    attr: Attribute,
-    ident: Member,
-    ty: Type
+    pub attr: Attribute,
+    pub ident: Member,
+    pub ty: Type
 }
 
 /// `#[prop(...)]` attribute
-enum Attribute
+pub enum Attribute
 {
     /// `#[prop(!)]`
     /// Marks this field as unsized or too large
@@ -36,14 +36,14 @@ enum Attribute
 }
 
 /// Utility: A range literal
-struct LitRange
+pub struct LitRange
 {
     /// `..` or `..=`
-    limits: RangeLimits,
+    pub limits: RangeLimits,
     /// Lower bound
-    from: LitInt,
+    pub from: LitInt,
     /// Upper bound
-    to: LitInt,
+    pub to: LitInt,
     /// Parsed range
     range: Range<i32>,
 }
@@ -158,6 +158,19 @@ impl TryFrom<syn::Attribute> for Attribute
                 "`#[prop(0..16)]`       - Field is an integer range",
                 "`#[prop(Foo | Bar)]`   - Field accepts these `enum` variants"
             ))
+        }
+    }
+}
+
+impl Attribute
+{
+    pub fn bit_size(&self) -> Option<usize>
+    {
+        match self
+        {
+            Attribute::Never => None,
+            Attribute::Range(range) => Some(range.range().len()),
+            Attribute::Enum(variants) => Some(variants.len()),
         }
     }
 }
