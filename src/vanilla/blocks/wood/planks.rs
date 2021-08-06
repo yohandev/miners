@@ -1,4 +1,4 @@
-use crate::world::block;
+use crate::world::block::{ Block, self };
 // use crate::world::blockdef;
 
 use super::WoodVariant;
@@ -14,5 +14,15 @@ use super::WoodVariant;
         /// The type wooden planks
         #[prop(Oak | Spruce | Birch | Jungle | Acacia | DarkOak)]
         pub variant: WoodVariant,
+    }
+
+    impl Block for BlockWoodenPlanks
+    {
+        const ID: &'static str = "wooden_planks";
+
+        fn name(&self) -> std::borrow::Cow<'static, str>
+        {
+            format!("{} Planks", self.variant).into()
+        }
     }
 //}

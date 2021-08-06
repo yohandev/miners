@@ -1,6 +1,6 @@
 // use crate::world::blockdef;
+use crate::world::block::{ Block, self };
 use crate::math::Direction;
-use crate::world::block;
 
 use super::WoodVariant;
 
@@ -21,5 +21,15 @@ use super::WoodVariant;
         /// The type wooden slab
         #[prop(Oak | Spruce | Birch | Jungle | Acacia | DarkOak)]
         variant: WoodVariant,
+    }
+
+    impl Block for BlockWoodenSlab
+    {
+        const ID: &'static str = "wooden_slab";
+
+        fn name(&self) -> std::borrow::Cow<'static, str>
+        {
+            format!("{} Slab", self.variant).into()
+        }
     }
 // }
