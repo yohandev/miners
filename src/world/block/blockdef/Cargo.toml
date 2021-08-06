@@ -1,0 +1,13 @@
+[package]
+name = "blockdef"
+version = "0.1.0"
+authors = ["yohandev"]
+edition = "2018"
+
+[dependencies]
+proc-macro2 = "1.0.28"
+quote = "1.0.9"
+syn = "1.0.74"
+
+[lib]
+proc-macro = true

@@ -1,4 +1,4 @@
-use crate::world::Block;
+use crate::world::block;
 // use crate::world::blockdef;
 
 use super::WoodVariant;
@@ -8,7 +8,7 @@ use super::WoodVariant;
 //     id: "wooden_planks",
 //     name: |self| { format!("{} Planks", self.variant) },
 
-    #[derive(Block, Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(block::State, Debug, Clone, Copy, PartialEq, Eq)]
     pub struct BlockWoodenPlanks
     {
         /// The type wooden planks

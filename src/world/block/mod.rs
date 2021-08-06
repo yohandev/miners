@@ -2,7 +2,7 @@ pub mod packed;
 mod dynamic;
 mod borrow;
 
-pub use miners_macros::Block;
+pub use blockdef::State;
 
 pub use dynamic::{ Object, Registry };
 pub use borrow::{ Ref };
@@ -23,7 +23,7 @@ use crate::util::Bits;
 ///     id: "wooden_slab",
 ///     name: format!("{} Slab", self.variant),
 ///     
-///     #[derive(BlockState, Debug, Clone, Copy, PartialEq, Eq)]
+///     #[derive(block::State, Debug, Clone, Copy, PartialEq, Eq)]
 ///     pub struct BlockWoodenSlab
 ///     {
 ///         #[prop(North | South | East | West | Up | Down)]
@@ -33,16 +33,22 @@ use crate::util::Bits;
 ///     }
 /// }
 /// ```
-pub trait Block: Object + Sized + 'static
+pub trait Block: State + Object
 {
     /// Unique string identifier for this type of block.
     const ID: &'static str;
+    
+    /// Display name for this instance of a block
+    fn name(&self) -> std::borrow::Cow<'static, str>;
+}
+
+/// Part of the [Block], which can be derived on its own(see [Block]'s doc), but
+/// really should be implemented implicity using the [blockdef] macro.
+pub trait State: Sized
+{
     /// Whether instances of this type of [Block] can (de)serialize their state
     /// in 6 bits.
     const REPR: Repr<Self>;
-
-    /// Display name for this instance of a block
-    fn name(&self) -> std::borrow::Cow<'static, str>;
 }
 
 /// Unique identifier for a type of [Block], assigned at runtime by
@@ -53,7 +59,7 @@ pub struct Id(u16);
 /// Represents the two ways [Block]'s state can be packed. This must be known statically,
 /// but deriving the [Block] trait takes care of that.
 #[derive(Clone, Copy)]
-pub enum Repr<T: Block + Sized>
+pub enum Repr<T: State + Sized>
 {
     /// The [Block]'s state can be entirely packed inline into 6 bits. The packed state's
     /// bits look like this:

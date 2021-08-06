@@ -1,5 +1,5 @@
 // use crate::world::blockdef;
-use crate::world::Block;
+use crate::world::block;
 
 // blockdef!
 // {
@@ -7,6 +7,6 @@ use crate::world::Block;
 //     name: |self| "Air",
 
     /// The default "empty" block, with the state properties.
-    #[derive(Block, Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(block::State, Debug, Clone, Copy, PartialEq, Eq)]
     pub struct BlockAir { }
 // }

@@ -1,6 +1,6 @@
 // use crate::world::blockdef;
-use crate::world::Block;
 use crate::math::Direction;
+use crate::world::block;
 
 use super::WoodVariant;
 
@@ -9,7 +9,7 @@ use super::WoodVariant;
 //     id: "wooden_slab",
 //     name: |self| format!("{} Slab", self.variant),
 
-    #[derive(Block, Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(block::State, Debug, Clone, Copy, PartialEq, Eq)]
     pub struct BlockWoodenSlab
     {
         /// Direction the slab is oriented, where down means a lower,
