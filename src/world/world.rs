@@ -56,6 +56,9 @@ impl World
     /// `World::poll_chunks`.
     pub fn load_chunk(&self, pos: Vec3<i32>)
     {
+        // Don't override already loaded chunks
+        if self.chunks.contains_key(&pos) { return }
+
         let registry = Arc::clone(&self.registry);
 
         self.loading.push(move || Chunk::new(pos, registry));
