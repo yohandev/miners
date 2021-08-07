@@ -22,6 +22,5 @@ impl World
                 // theefore must be in bounds
                 chunk.get_unchecked(pos & 0x1f)
             })
-            .flatten()
     }
 }

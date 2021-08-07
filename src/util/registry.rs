@@ -46,6 +46,12 @@ impl<T> Registry<T>
     {
         self.rev.get(id)
     }
+
+    /// [Registry::get] without bounds checking
+    pub unsafe fn get_unchecked(&self, id: usize) -> &(TypeId, T)
+    {
+        self.rev.get_unchecked(id)
+    }
 }
 
 impl<T> Default for Registry<T>

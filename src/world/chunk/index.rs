@@ -22,25 +22,30 @@ impl Chunk
     }
 
     /// See [Chunk::get_unchecked]
-    pub(super) unsafe fn get_unchecked_flat<'a>(&'a self, id: usize) -> Option<&'a dyn block::Object>
+    pub(super) unsafe fn get_unchecked_flat(&self, id: usize) -> &dyn block::Object
     {
         // Get packed state
-        let state: &'a block::Packed = self.blocks.get_unchecked(id);
+        let state = self.blocks.get_unchecked(id);
 
         // Interpret bits
         match state.tag()
         {
             block::packed::Repr::Val =>
             {
-                // SAFETY:
+                // SAFETY I:
                 // Just checked state's tag
+                //
+                // SAFETY II:
+                // Only way to enter blocks into `Chunk` is via the `set` method,
+                // which doesn't accept types not within the `Registry`. Thus, unchecked
+                // `Registry` access is fine.
                 self.registry.create_ref(&state.val)
             },
             block::packed::Repr::Ptr =>
             {
                 // SAFETY:
                 // Just checked state's tag
-                Some(&**self.addr_blocks.get_unchecked(state.ptr.slot()))
+                &**self.addr_blocks.get_unchecked(state.ptr.slot())
             },
         }
     }
@@ -49,7 +54,7 @@ impl Chunk
     /// without doing bounds check. Returns `None` if the block type found isn't
     /// matching to generic parameter `T`.
     #[inline]
-    pub unsafe fn get_unchecked<'a>(&'a self, pos: Vec3<usize>) -> Option<&'a dyn block::Object>
+    pub unsafe fn get_unchecked(&self, pos: Vec3<usize>) -> &dyn block::Object
     {
         self.get_unchecked_flat(Self::flatten_idx(pos))
     }
@@ -57,7 +62,7 @@ impl Chunk
     /// Get an mutable reference to the block at the given position, in chunk-space,
     /// without doing bounds check. Returns `None` if the block type found isn't
     /// matching to generic parameter `T`.
-    pub unsafe fn get_unchecked_mut<'a>(&'a mut self, pos: Vec3<usize>) -> Option<&'a mut dyn block::Object>
+    pub unsafe fn get_unchecked_mut(&mut self, pos: Vec3<usize>) -> &mut dyn block::Object
     {
         // Get packed state
         let state = self.blocks.get_unchecked_mut(Self::flatten_idx(pos));
@@ -67,15 +72,20 @@ impl Chunk
         {
             block::packed::Repr::Val =>
             {
-                // SAFETY:
+                // SAFETY I:
                 // Just checked state's tag
+                //
+                // SAFETY II:
+                // Only way to enter blocks into `Chunk` is via the `set` method,
+                // which doesn't accept types not within the `Registry`. Thus, unchecked
+                // `Registry` access is fine.
                 self.registry.create_ref_mut(&mut state.val)
             },
             block::packed::Repr::Ptr =>
             {
                 // SAFETY:
                 // Just checked state's tag
-                Some(&mut **self.addr_blocks.get_unchecked_mut(state.ptr.slot()))
+                &mut **self.addr_blocks.get_unchecked_mut(state.ptr.slot())
             },
         }
     }
@@ -142,7 +152,7 @@ impl Chunk
         {
             // SAFETY:
             // Bounds just checked above.
-            true => unsafe { self.get_unchecked(pos) },
+            true => Some(unsafe { self.get_unchecked(pos) }),
             // Out of bounds
             false => None
         }
@@ -157,7 +167,7 @@ impl Chunk
         {
             // SAFETY:
             // Bounds just checked above.
-            true => unsafe { self.get_unchecked_mut(pos) },
+            true => Some(unsafe { self.get_unchecked_mut(pos) }),
             // Out of bounds
             false => None
         }

@@ -51,7 +51,7 @@ impl<'a> Iterator for Iter<'a>
             );
             // SAFETY:
             // `self.next` is guarenteed to be in-bounds, checked above
-            let block = unsafe { self.chunk.get_unchecked_flat(self.next) }.unwrap();
+            let block = unsafe { self.chunk.get_unchecked_flat(self.next) };
             self.next += 1;
 
             Some((pos, block))

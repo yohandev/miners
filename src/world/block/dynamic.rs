@@ -174,35 +174,31 @@ impl Registry
     }
 
     /// Create an immutable, dynamic reference to a [block::Object] given its
-    /// packed representation. Represents some if that block had been registered
-    /// in this registry before.
-    pub(in crate::world) fn create_ref<'a>(&self, packed: &'a block::packed::Val) -> Option<&'a dyn block::Object>
+    /// packed representation. The block MUST be registered, otherwise UB may
+    /// occur
+    pub(in crate::world) unsafe fn create_ref<'a>(&self, packed: &'a block::packed::Val) -> &'a dyn block::Object
     {
         // Get vtable from registry
-        let vtable = self.0
-            .get(packed.id().0 as _)
-            .map(|(_, meta)| meta)?;
+        let vtable = self.0.get_unchecked(packed.id().0 as _).1;
         // Erase type of data
         let data = packed as *const block::packed::Val as *const ();
         
         // Recreate dyn reference
-        Some(unsafe { &*ptr_meta::from_raw_parts(data, *vtable) })
+        &*ptr_meta::from_raw_parts(data, vtable)
     }
 
     /// Create a mutable, dynamic reference to a [block::Object] given its
-    /// packed representation. Represents some if that block had been registered
-    /// in this registry before.
-    pub(in crate::world) fn create_ref_mut<'a>(&self, packed: &'a mut block::packed::Val) -> Option<&'a mut dyn block::Object>
+    /// packed representation.  The block MUST be registered, otherwise UB may
+    /// occur
+    pub(in crate::world) unsafe fn create_ref_mut<'a>(&self, packed: &'a mut block::packed::Val) -> &'a mut dyn block::Object
     {
         // Get vtable from registry
-        let vtable = self.0
-            .get(packed.id().0 as _)
-            .map(|(_, meta)| meta)?;
+        let vtable = self.0.get_unchecked(packed.id().0 as _).1;
         // Erase type of data
         let data = packed as *mut block::packed::Val as *mut ();
         
         // Recreate dyn reference
-        Some(unsafe { &mut *ptr_meta::from_raw_parts_mut(data, *vtable) })
+        &mut *ptr_meta::from_raw_parts_mut(data, vtable)
     }
 }
 
