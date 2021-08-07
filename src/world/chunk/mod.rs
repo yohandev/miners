@@ -6,11 +6,16 @@ use std::sync::Arc;
 use slab::Slab;
 
 use crate::world::block;
+use crate::math::Vec3;
 
 /// A `32`x`32`x`32` segment of a `World`, storing `Block`s and
 /// `Entity`s
 pub struct Chunk
 {
+    /// This chunk's position in its world, where 1 unit = 32 blocks.
+    /// That means this *isn't* the position of minimum block in this
+    /// chunk.
+    pos: Vec3<i32>,
     /// A 3-dimensional array of `BlockState`s representing this
     /// entire `Chunk`.
     ///
@@ -38,13 +43,22 @@ impl Chunk
     /// Total number of blocks in any one chunk(including empty/air blocks).
     pub const VOLUME: usize = 32 * 32 * 32;
 
-    pub fn new(registry: Arc<block::Registry>) -> Self
+    /// Create a new, unloaded(all blocks set to air), chunk at the given
+    /// chunk position(not that this *isn't* the position of its corner block).
+    pub fn new(pos: Vec3<i32>, registry: Arc<block::Registry>) -> Self
     {
         Self
         {
+            pos,
             blocks: Box::new([block::Packed::zeroed(); Chunk::VOLUME]),
             addr_blocks: Default::default(),
             registry,
         }
+    }
+
+    /// Get this chunk's position, where 1 unit = 32 blocks
+    pub fn pos(&self) -> Vec3<i32>
+    {
+        self.pos
     }
 }

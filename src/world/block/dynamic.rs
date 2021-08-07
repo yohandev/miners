@@ -24,7 +24,7 @@ mod private
     /// Private parts of the [block::Object] trait, to prevent accidental implementation
     /// of the trait(the API only exposes the [Block] trait and then relies on the blanket
     /// implementation)
-    pub trait ObjectPriv: 'static
+    pub trait ObjectPriv: Send + 'static
     {
         /// Get the [TypeId] of the concrete [Block] represented by this object
         fn inner_type_id(&self) -> TypeId;
