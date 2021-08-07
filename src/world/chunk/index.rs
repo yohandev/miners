@@ -21,13 +21,11 @@ impl Chunk
         x + Chunk::SIZE * (y + Chunk::SIZE * z)
     }
 
-    /// Get an immutable reference to the block at the given position, in chunk-space,
-    /// without doing bounds check. Returns `None` if the block type found isn't
-    /// matching to generic parameter `T`.
-    pub unsafe fn get_unchecked<'a>(&'a self, pos: Vec3<usize>) -> Option<&'a dyn block::Object>
+    /// See [Chunk::get_unchecked]
+    pub(super) unsafe fn get_unchecked_flat<'a>(&'a self, id: usize) -> Option<&'a dyn block::Object>
     {
         // Get packed state
-        let state: &'a block::Packed = self.blocks.get_unchecked(Self::flatten_idx(pos));
+        let state: &'a block::Packed = self.blocks.get_unchecked(id);
 
         // Interpret bits
         match state.tag()
@@ -45,6 +43,15 @@ impl Chunk
                 Some(&**self.addr_blocks.get_unchecked(state.ptr.slot()))
             },
         }
+    }
+
+    /// Get an immutable reference to the block at the given position, in chunk-space,
+    /// without doing bounds check. Returns `None` if the block type found isn't
+    /// matching to generic parameter `T`.
+    #[inline]
+    pub unsafe fn get_unchecked<'a>(&'a self, pos: Vec3<usize>) -> Option<&'a dyn block::Object>
+    {
+        self.get_unchecked_flat(Self::flatten_idx(pos))
     }
 
     /// Get an mutable reference to the block at the given position, in chunk-space,
