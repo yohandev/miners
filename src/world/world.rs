@@ -1,86 +1,84 @@
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
+use parking_lot::{ RwLock, RwLockReadGuard, RwLockWriteGuard };
+
 use crate::world::{ Chunk, block };
-use crate::util::ThreadJobs;
 use crate::math::Vec3;
 
 pub struct World
 {
     /// Immutable registry of all the block types in this world
     registry: Arc<block::Registry>,
-    /// Loaded chunks
-    chunks: HashMap<Vec3<i32>, Chunk>,
-    /// Chunks which are being loaded(worldgen'd) currently, then inserted in
-    /// `self.chunks` once done
-    loading: ThreadJobs<Chunk>,
+    /// All the chunks in this world which are currently loaded or being loaded.
+    /// They're protected by a `RwLock` such that multiple mutable borrows can be
+    /// made to different chunks while only holding an immutable borrow to this `World`.
+    chunks: HashMap<Vec3<i32>, Arc<RwLock<Chunk>>>,
 }
 
 impl World
 {
-    /// Returns some [Block] at the given world coordinates if the [Chunk] it's
-    /// in is loaded
-    pub fn get(&self, pos: Vec3<i32>) -> Option<&dyn block::Object>
+    /// Returns some [Block] at the world coordinates `pos` if the chunk it's in is
+    /// loaded and not locked. This is a non-blocking operation.
+    pub fn get(&self, pos: Vec3<i32>) -> Option<impl Deref<Target = dyn block::Object> + '_>
     {
-        self.chunks
+        let lock = self.chunks
             // Chunk position, 1 unit = 32 blocks
-            .get(&(pos / Chunk::SIZE as i32))
-            .map(|chunk| unsafe
-            {
-                // SAFETY:
-                // Position is euclidian reminder'd by 32, and
-                // therefore must be in bounds
-                chunk.get_unchecked(pos.as_() & 0x1f)
-            })
+            .get(&(pos / Chunk::SIZE as i32))?
+            // Block until acquired a read-only lock
+            .try_read()?;
+        
+        Some(RwLockReadGuard::map(lock, |chunk| unsafe
+        {
+            // SAFETY:
+            // Position is euclidian reminder'd by 32, and
+            // therefore must be in bounds
+            chunk.get_unchecked(pos.as_() & 0x1f)
+        }))
     }
 
-    /// Returns some [Block] at the given world coordinates if the [Chunk] it's
-    /// in is loaded
-    pub fn get_mut(&mut self, pos: Vec3<i32>) -> Option<&mut dyn block::Object>
+    /// Returns some [Block] at the world coordinates `pos` if the chunk it's in is
+    /// loaded and not locked. This is a non-blocking operation.
+    pub fn get_mut(&self, pos: Vec3<i32>) -> Option<impl DerefMut<Target = dyn block::Object> + '_>
     {
-        self.chunks
+        let lock = self.chunks
             // Chunk position, 1 unit = 32 blocks
-            .get_mut(&(pos / Chunk::SIZE as i32))
-            .map(|chunk| unsafe
-            {
-                // SAFETY:
-                // Position is euclidian reminder'd by 32, and
-                // therefore must be in bounds
-                chunk.get_unchecked_mut(pos.as_() & 0x1f)
-            })
+            .get(&(pos / Chunk::SIZE as i32))?
+            // Block until acquired a read-only lock
+            .try_write()?;
+        
+        Some(RwLockWriteGuard::map(lock, |chunk| unsafe
+        {
+            // SAFETY:
+            // Position is euclidian reminder'd by 32, and
+            // therefore must be in bounds
+            chunk.get_unchecked_mut(pos.as_() & 0x1f)
+        }))
     }
 
     /// Loads the chunk at the given chunk position(1 unit = 32 blocks) if it's
     /// not already loaded. This is non-blocking, but the chunk isn't loaded
-    /// instantaneously and won't be available until it's done and polled via
-    /// `World::poll_chunks`.
-    pub fn load_chunk(&self, pos: Vec3<i32>)
+    /// instantaneously and won't be available until it's done.
+    pub fn load_chunk(&mut self, pos: Vec3<i32>)
     {
-        // Don't override already loaded chunks
+        // Don't override
         if self.chunks.contains_key(&pos) { return }
 
-        let registry = Arc::clone(&self.registry);
-
-        self.loading.push(move || Chunk::new(pos, registry));
-    }
-
-    /// Inserts all the chunks that have finished loading to this world's map
-    /// of loaded chunks, without blocking.
-    pub fn poll_chunks(&mut self)
-    {
-        for chunk in self.loading.pull()
+        // Create empty chunk
+        let chunk = Arc::new(RwLock::new(Chunk::new(pos, &self.registry)));
+        
+        // Fire-off the chunk generation
+        let gen = Arc::clone(&chunk);
+        rayon::spawn(move ||
         {
-            self.chunks.insert(chunk.pos(), chunk);
-        }
-    }
+            for (_, _block) in &*gen.write()
+            {
 
-    /// Wait for all the currently loading chunks to finish generating, then
-    /// add them to this world's loaded chunks. This blocks the current thread.
-    pub fn poll_chunks_blocking(&mut self)
-    {
-        for chunk in self.loading.join()
-        {
-            self.chunks.insert(chunk.pos(), chunk);
-        }
+            }
+        });
+
+        // Insert in world
+        self.chunks.insert(pos, chunk);
     }
 }

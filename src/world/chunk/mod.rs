@@ -45,14 +45,14 @@ impl Chunk
 
     /// Create a new, unloaded(all blocks set to air), chunk at the given
     /// chunk position(not that this *isn't* the position of its corner block).
-    pub fn new(pos: Vec3<i32>, registry: Arc<block::Registry>) -> Self
+    pub fn new(pos: Vec3<i32>, registry: &Arc<block::Registry>) -> Self
     {
         Self
         {
             pos,
             blocks: Box::new([block::Packed::zeroed(); Chunk::VOLUME]),
             addr_blocks: Default::default(),
-            registry,
+            registry: Arc::clone(registry),
         }
     }
 
