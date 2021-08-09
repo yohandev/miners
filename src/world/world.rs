@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use parking_lot::{ RwLock, RwLockReadGuard, RwLockWriteGuard };
 
@@ -15,6 +16,8 @@ pub struct World
     /// They're protected by a `RwLock` such that multiple mutable borrows can be
     /// made to different chunks while only holding an immutable borrow to this `World`.
     chunks: HashMap<Vec3<i32>, Arc<RwLock<Chunk>>>,
+    /// Number of chunks currently loading
+    loading: Arc<AtomicUsize>,
 }
 
 impl World
@@ -88,15 +91,28 @@ impl World
         
         // Fire-off the chunk generation
         let gen = Arc::clone(&chunk);
+        let count = Arc::clone(&self.loading);
         rayon::spawn(move ||
         {
+            // mark this chunk as loading
+            count.fetch_add(1, Ordering::Acquire);
+
             for (_, _block) in &*gen.write()
             {
 
             }
+
+            // mark this chunk as no longer loading
+            count.fetch_sub(1, Ordering::Release);
         });
 
         // Insert in world
         self.chunks.insert(pos, chunk);
+    }
+
+    /// Get the number of chunks currently loading
+    pub fn num_chunks_loading(&self) -> usize
+    {
+        self.loading.load(Ordering::Acquire)
     }
 }
