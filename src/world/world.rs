@@ -57,6 +57,24 @@ impl World
         }))
     }
 
+    /// Get the chunk at the given chunk position(1 unit = 32 blocks) if it's
+    /// loaded and not already being borrowed mutably.
+    pub fn get_chunk(&self, pos: Vec3<i32>) -> Option<impl Deref<Target = Chunk> + '_>
+    {
+        self.chunks
+            .get(&pos)?
+            .try_read()
+    }
+
+    /// Get the chunk at the given chunk position(1 unit = 32 blocks) if it's
+    /// loaded and not already being borrowed (im)mutably.
+    pub fn get_chunk_mut(&self, pos: Vec3<i32>) -> Option<impl DerefMut<Target = Chunk> + '_>
+    {
+        self.chunks
+            .get(&pos)?
+            .try_write()
+    }
+
     /// Loads the chunk at the given chunk position(1 unit = 32 blocks) if it's
     /// not already loaded. This is non-blocking, but the chunk isn't loaded
     /// instantaneously and won't be available until it's done.
