@@ -22,6 +22,17 @@ pub struct World
 
 impl World
 {
+    /// Creates a new `World` with no loaded `Chunk`s
+    pub fn new(registry: block::Registry) -> Self
+    {
+        Self
+        {
+            registry: Arc::new(registry),
+            chunks: HashMap::default(),
+            loading: Arc::new(AtomicUsize::new(0)),
+        }
+    }
+
     /// Returns some [Block] at the world coordinates `pos` if the chunk it's in is
     /// loaded and not locked. This is a non-blocking operation.
     pub fn get(&self, pos: Vec3<i32>) -> Option<impl Deref<Target = dyn block::Object> + '_>
@@ -119,6 +130,8 @@ impl World
             {
 
             }
+            // simulate loading...
+            std::thread::sleep(std::time::Duration::from_millis(100));
 
             // mark this chunk as no longer loading
             count.fetch_sub(1, Ordering::Release);
