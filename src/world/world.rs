@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
+use std::ops::{ Deref, DerefMut };
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{ AtomicUsize, Ordering };
 
 use parking_lot::{ RwLock, RwLockReadGuard, RwLockWriteGuard };
 
-use crate::world::{ Chunk, block };
+use crate::world::{ Chunk, Block, block };
 use crate::math::Vec3;
 
 pub struct World
@@ -58,6 +58,24 @@ impl World
             // therefore must be in bounds
             chunk.get_unchecked_mut(pos.as_() & 0x1f)
         }))
+    }
+
+    /// Set the [Block] at the world coordinates `pos` if the chunk it's in is loaded
+    /// and not locked. This is a non-blocking operation.
+    pub fn set<T: Block>(&self, pos: Vec3<i32>, block: T) -> Result<(), ()>
+    {
+        let mut lock = self.chunks
+            // Chunk position, 1 unit = 32 blocks
+            .get(&(pos / Chunk::SIZE as i32))
+            .ok_or(())?
+            // Block until acquired a read-only lock
+            .try_write()
+            .ok_or(())?;
+
+        unsafe
+        {
+            Ok(lock.set_unchecked(pos.as_() & 0x1f, block))
+        }
     }
 
     /// Get the chunk at the given chunk position(1 unit = 32 blocks) if it's
