@@ -33,7 +33,10 @@ mod tests
         {
             for z in 0..12
             {
-                world.load_chunk(vec3(x * 32, 0, z * 32));
+                for y in 0..12
+                {
+                    world.load_chunk(vec3(x * 32, y * 32, z * 32));
+                }
             }
         }
 
@@ -44,7 +47,6 @@ mod tests
 
         println!("world[0, 0, 0] = {:?}", world.get(vec3(0, 0, 0)).map(|b| b.name()));
         println!("world[1, 0, 0] = {:?}", world.get(vec3(1, 0, 0)).map(|b| b.name()));
-        assert!(world.get(vec3(0, 0, 0)).unwrap().is::<BlockAir>());
     }
 }
 

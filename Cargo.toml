@@ -9,6 +9,7 @@ blockdef = { path = "./src/world/block/blockdef" }
 static_assertions = "1.1.0"
 parking_lot = "0.11.1"
 ptr_meta = "0.1.3"
+noise = "0.7.0"
 rayon = "1.5.1"
 slab = "0.4.3"
 vek = "0.15.1"

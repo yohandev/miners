@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::{ AtomicUsize, Ordering };
 
 use parking_lot::{ RwLock, RwLockReadGuard, RwLockWriteGuard };
+use noise::NoiseFn;
 
 use crate::world::{ Chunk, Block, block };
 use crate::math::Vec3;
@@ -18,6 +19,8 @@ pub struct World
     chunks: HashMap<Vec3<i32>, Arc<RwLock<Chunk>>>,
     /// Number of chunks currently loading
     loading: Arc<AtomicUsize>,
+    /// The terrain height generator used by all threads loading chunks
+    noise: Arc<noise::Perlin>,
 }
 
 impl World
@@ -30,6 +33,7 @@ impl World
             registry: Arc::new(registry),
             chunks: HashMap::default(),
             loading: Arc::new(AtomicUsize::new(0)),
+            noise: Arc::new(Default::default()),
         }
     }
 
@@ -121,17 +125,37 @@ impl World
         // Fire-off the chunk generation
         let gen = Arc::clone(&chunk);
         let count = Arc::clone(&self.loading);
+        let noise = Arc::clone(&self.noise);
         rayon::spawn(move ||
         {
+            const CHUNK_SIZE: i32 = Chunk::SIZE as i32;
+
             // mark this chunk as loading
             count.fetch_add(1, Ordering::Acquire);
 
-            for (_, _block) in &*gen.write()
-            {
+            let mut chunk = gen.write();
 
+            for (x, z) in (0..CHUNK_SIZE).flat_map(|x| (0..CHUNK_SIZE).map(move |z| (x, z)))
+            {
+                let height = (noise.get([x as f64 * 0.2, z as f64 * 0.2]) * 100.0) as i32;
+                for y in 0..CHUNK_SIZE
+                {
+                    if y + chunk.pos().y * CHUNK_SIZE <= height
+                    {
+                        unsafe
+                        {
+                            // SAFETY:
+                            // x, y, z is >= 0 and < Chunk::SIZE
+                            chunk.set_unchecked(Vec3::new(x, y, z).as_(), crate::vanilla::blocks::BlockWoodenPlanks
+                            {
+                                variant: crate::vanilla::blocks::WoodVariant::Jungle,
+                            });
+                        }
+                    }
+                } 
             }
-            // simulate loading...
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            
+            drop(chunk);
 
             // mark this chunk as no longer loading
             count.fetch_sub(1, Ordering::Release);
