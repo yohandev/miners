@@ -1,4 +1,6 @@
-use winit::event_loop::{ ControlFlow, EventLoop };
+mod framework;
+
+use winit::event_loop::{ControlFlow, EventLoop };
 use winit::window::WindowBuilder;
 use winit::event::*;
 
